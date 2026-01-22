@@ -128,8 +128,9 @@ async function handleLogin(event) {
     const email = document.getElementById('login-email').value;
     const password = document.getElementById('login-password').value;
     const btn = document.getElementById('login-btn');
+    const originalBtnText = btn.innerHTML;
 
-    btn.classList.add('btn-loading');
+    btn.innerHTML = `<div class="spinner" style="width: 20px; height: 20px;"></div> Signing In...`;
     btn.disabled = true;
 
     try {
@@ -138,8 +139,7 @@ async function handleLogin(event) {
         navigate(user.role === 'photographer' ? 'photographer' : 'attendee');
     } catch (error) {
         showToast(error.message, 'error');
-    } finally {
-        btn.classList.remove('btn-loading');
+        btn.innerHTML = originalBtnText;
         btn.disabled = false;
     }
 }
@@ -223,8 +223,9 @@ async function handleSignup(event) {
     const password = document.getElementById('signup-password').value;
     const role = document.getElementById('signup-role').value;
     const btn = document.getElementById('signup-btn');
+    const originalBtnText = btn.innerHTML;
 
-    btn.classList.add('btn-loading');
+    btn.innerHTML = `<div class="spinner" style="width: 20px; height: 20px;"></div> Creating Account...`;
     btn.disabled = true;
 
     try {
@@ -233,8 +234,7 @@ async function handleSignup(event) {
         navigate(user.role === 'photographer' ? 'photographer' : 'attendee');
     } catch (error) {
         showToast(error.message, 'error');
-    } finally {
-        btn.classList.remove('btn-loading');
+        btn.innerHTML = originalBtnText;
         btn.disabled = false;
     }
 }
