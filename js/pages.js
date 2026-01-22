@@ -328,9 +328,9 @@ function renderAttendeeEventPage(eventId) {
                 </div>
                 
                 ${renderUploadZone('selfie-upload', {
-            multiple: true,
-            maxFiles: 3,
-            hint: 'Tap to take a selfie 📸 or choose from gallery'
+            multiple: false, // Force single file to ensure standard camera intent
+            maxFiles: 1,
+            hint: 'Tap to take a selfie 📸'
         })}
                 
                 <button class="btn btn-primary btn-lg" onclick="startFaceMatching('${eventId}')" style="width: 100%; margin-top: 24px;">
@@ -866,7 +866,7 @@ function emailPhotosToBooth() {
     const subject = encodeURIComponent(`Print Order: ${userName} - ${eventName}`);
 
     // Create a list of photo URLs
-    const photoLinks = matches.map((m, i) => `Photo ${i + 1}: ${m.url}`).join('\n\n');
+    const photoLinks = matches.map((m, i) => `Photo ${i + 1}: ${m.data}`).join('\n\n');
 
     const bodyHeader = encodeURIComponent(`Name: ${userName}\nEvent: ${eventName}\nPhotos: ${matches.length}\n\nPlease print these photos:\n\n`);
     const bodyLinks = encodeURIComponent(photoLinks);
