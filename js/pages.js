@@ -332,63 +332,6 @@ function renderAttendeeEventPage(eventId) {
     `;
 }
 
-// Old sync version kept for compatibility - now redirects to async
-function renderAttendeeEventPageSync(eventId) {
-    const event = getEventById(eventId);
-
-    return `
-        <div class="page-attendee">
-            <div class="container">
-                ${renderBackButton('Back to Events', 'attendee')}
-                
-                <div class="selfie-upload-container">
-                    <div class="page-header" style="text-align: center;">
-                        <h1 class="page-title">${escapeHtml(event.name)}</h1>
-                        <p class="page-subtitle">Upload a clear selfie to find your photos</p>
-                    </div>
-                    
-                    ${renderUploadZone('selfie-upload', {
-        multiple: true,
-        maxFiles: 3,
-        hint: 'Upload up to 3 selfies for better matching (JPG, PNG)'
-    })}
-                    
-                    <div class="selfie-tips">
-                        <h4 class="selfie-tips-title">💡 Tips for best results</h4>
-                        <div class="selfie-tips-list">
-                            <div class="selfie-tip">
-                                <span class="selfie-tip-icon">✓</span>
-                                <span>Use a clear, well-lit photo of your face</span>
-                            </div>
-                            <div class="selfie-tip">
-                                <span class="selfie-tip-icon">✓</span>
-                                <span>Face the camera directly</span>
-                            </div>
-                            <div class="selfie-tip">
-                                <span class="selfie-tip-icon">✓</span>
-                                <span>Avoid sunglasses or hats that cover your face</span>
-                            </div>
-                            <div class="selfie-tip">
-                                <span class="selfie-tip-icon">✓</span>
-                                <span>Multiple selfies from different angles improve accuracy</span>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div style="text-align: center; margin-top: var(--space-8);">
-                        <button class="btn btn-primary btn-lg" id="find-photos-btn" onclick="startFaceMatching('${eventId}')" disabled>
-                            🔍 Find My Photos
-                        </button>
-                        <p class="form-hint" style="margin-top: var(--space-2);">
-                            Upload at least one selfie to continue
-                        </p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    `;
-}
-
 // Listen for file uploads on attendee page
 document.addEventListener('filesChanged', (e) => {
     if (e.detail.zoneId === 'selfie-upload') {
@@ -408,7 +351,7 @@ async function startFaceMatching(eventId) {
         return;
     }
 
-    const event = getEventById(eventId);
+    const event = await getEventByIdAsync(eventId);
 
     showProgressModal('Finding Your Photos', [
         'Loading AI models...',
@@ -453,72 +396,80 @@ async function startFaceMatching(eventId) {
     }
 }
 
-// Render Results Page
 function renderAttendeeResultsPage(eventId) {
-    const event = getEventById(eventId);
     const matches = window.matchedPhotos || [];
-
-    if (!event) {
-        return renderEmptyState('❌', 'Event not found', 'This event may have been removed');
-    }
-
-    // Store for lightbox
     window.currentDisplayPhotos = matches;
 
-    if (matches.length === 0) {
-        return `
-            <div class="page-attendee">
-                <div class="container">
-                    ${renderBackButton('Back to Event', `attendee-event/${eventId}`)}
-                    ${renderNoMatchFound(event.name, `navigate('attendee-event', '${eventId}')`)}
+    setTimeout(async () => {
+        const container = document.querySelector('.container');
+        if (!container) return;
+
+        const event = await getEventByIdAsync(eventId);
+
+        if (!event) {
+            container.innerHTML = renderEmptyState('❌', 'Event not found', 'This event may have been removed');
+            return;
+        }
+
+        if (matches.length === 0) {
+            container.innerHTML = `
+                ${renderBackButton('Back to Event', `attendee-event/${eventId}`)}
+                ${renderNoMatchFound(event.name, `navigate('attendee-event', '${eventId}')`)}
+            `;
+            return;
+        }
+
+        window.currentEventName = event.name;
+
+        container.innerHTML = `
+            ${renderBackButton('Back to Event', `attendee-event/${eventId}`)}
+
+            <div class="results-header">
+                <div>
+                    <h1 class="page-title">Your Photos</h1>
+                    <p class="results-count">
+                        Found <strong>${matches.length}</strong> photo${matches.length !== 1 ? 's' : ''} in "${escapeHtml(event.name)}"
+                    </p>
                 </div>
             </div>
-        `;
-    }
 
-    // Save event name for payment
-    window.currentEventName = event.name;
+            <div class="results-payment-cta">
+                <h3>📸 Get Your Photos Without Watermarks</h3>
+                <p>Download high-quality photos ready to share and print</p>
+                <div class="results-payment-price">
+                    $19.99 <span>for all ${matches.length} photos</span>
+                </div>
+                <div style="display: flex; gap: var(--space-4); justify-content: center; flex-wrap: wrap;">
+                    <button class="btn btn-primary btn-lg" onclick="showPaymentModal(window.matchedPhotos, '${escapeHtml(event.name)}')">
+                        💳 Get My Photos
+                    </button>
+                    <button class="btn btn-secondary btn-lg" onclick="showToast('Print option coming soon!', 'info')">
+                        🖨️ Get Prints ($4.99+)
+                    </button>
+                </div>
+            </div>
+
+            <p style="text-align: center; color: var(--text-secondary); margin-bottom: var(--space-6);">
+                👇 Preview your photos below (watermarked)
+            </p>
+
+            ${renderPhotoGallery(matches, {
+            showDownload: false,
+            showMatch: true,
+            watermarked: true,
+            onPhotoClick: true
+        })}
+        `;
+    }, 100);
+
 
     return `
         <div class="page-attendee">
-            <div class="container">
-                ${renderBackButton('Back to Event', `attendee-event/${eventId}`)}
-                
-                <div class="results-header">
-                    <div>
-                        <h1 class="page-title">Your Photos</h1>
-                        <p class="results-count">
-                            Found <strong>${matches.length}</strong> photo${matches.length !== 1 ? 's' : ''} in "${escapeHtml(event.name)}"
-                        </p>
-                    </div>
-                </div>
-                
-                <div class="results-payment-cta">
-                    <h3>📸 Get Your Photos Without Watermarks</h3>
-                    <p>Download high-quality photos ready to share and print</p>
-                    <div class="results-payment-price">
-                        $19.99 <span>for all ${matches.length} photos</span>
-                    </div>
-                    <div style="display: flex; gap: var(--space-4); justify-content: center; flex-wrap: wrap;">
-                        <button class="btn btn-primary btn-lg" onclick="showPaymentModal(window.matchedPhotos, '${escapeHtml(event.name)}')">
-                            💳 Get My Photos
-                        </button>
-                        <button class="btn btn-secondary btn-lg" onclick="showToast('Print option coming soon!', 'info')">
-                            🖨️ Get Prints ($4.99+)
-                        </button>
-                    </div>
-                </div>
-                
-                <p style="text-align: center; color: var(--text-secondary); margin-bottom: var(--space-6);">
-                    👇 Preview your photos below (watermarked)
+            <div class="container" style="padding: 60px 20px;">
+                <div class="loading-spinner"></div>
+                <p style="color: var(--text-secondary); margin-top: 16px; text-align: center;">
+                    Loading results...
                 </p>
-                
-                ${renderPhotoGallery(matches, {
-        showDownload: false,
-        showMatch: true,
-        watermarked: true,
-        onPhotoClick: true
-    })}
             </div>
         </div>
     `;
@@ -528,9 +479,76 @@ function renderAttendeeResultsPage(eventId) {
 function renderPhotographerPage() {
     if (!requirePhotographer()) return '';
 
-    const events = getEventsByPhotographer(currentUser.id);
-    const stats = getPhotographerStats(currentUser.id);
+    // Load async data
+    setTimeout(async () => {
+        const statsContainer = document.querySelector('.dashboard-stats');
+        const eventsContainer = document.querySelector('.event-management');
 
+        if (!statsContainer || !eventsContainer) return;
+
+        // Fetch stats and events in parallel
+        const [stats, events] = await Promise.all([
+            getPhotographerStatsAsync(currentUser.id),
+            getEventsByPhotographerAsync(currentUser.id)
+        ]);
+
+        // Render stats
+        statsContainer.innerHTML = `
+            <div class="stat-card">
+                <div class="stat-card-icon">📅</div>
+                <div class="stat-card-value">${stats.totalEvents}</div>
+                <div class="stat-card-label">Total Events</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-card-icon">📷</div>
+                <div class="stat-card-value">${stats.totalPhotos}</div>
+                <div class="stat-card-label">Total Photos</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-card-icon">🤖</div>
+                <div class="stat-card-value">${stats.processingRate}%</div>
+                <div class="stat-card-label">Processed</div>
+            </div>
+        `;
+
+        // Render events
+        eventsContainer.innerHTML = `
+            <div class="event-management-header">
+                <h2 class="heading-4">Your Events</h2>
+            </div>
+            ${events.length > 0 ? `
+                <div class="event-grid">
+                    ${events.map(event => `
+                        <div class="event-card" onclick="navigate('photographer-event', '${event.id}')">
+                            <div class="event-card-image">
+                                <img src="${event.coverImage}" alt="${escapeHtml(event.name)}">
+                            </div>
+                            <div class="event-card-content">
+                                <h3 class="event-card-title">${escapeHtml(event.name)}</h3>
+                                <div class="event-card-date">📅 ${formatDate(event.date)}</div>
+                                <div class="event-card-stats">
+                                    <span class="event-stat">
+                                        <span class="event-stat-value">${event.photos.length}</span> photos
+                                    </span>
+                                    <span class="badge ${event.photos.filter(p => p.processed).length === event.photos.length && event.photos.length > 0 ? 'badge-success' : 'badge-warning'}">
+                                        ${event.photos.filter(p => p.processed).length}/${event.photos.length} processed
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            ` : renderEmptyState(
+            '📅',
+            'No events yet',
+            'Create your first event to start uploading photos',
+            'Create Event',
+            "navigate('photographer-create')"
+        )}
+        `;
+    }, 100);
+
+    // Initial loading state
     return `
         <div class="page-attendee">
             <div class="container">
@@ -545,57 +563,11 @@ function renderPhotographerPage() {
                 </div>
                 
                 <div class="dashboard-stats">
-                    <div class="stat-card">
-                        <div class="stat-card-icon">📅</div>
-                        <div class="stat-card-value">${stats.totalEvents}</div>
-                        <div class="stat-card-label">Total Events</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-card-icon">📷</div>
-                        <div class="stat-card-value">${stats.totalPhotos}</div>
-                        <div class="stat-card-label">Total Photos</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-card-icon">🤖</div>
-                        <div class="stat-card-value">${stats.processingRate}%</div>
-                        <div class="stat-card-label">Processed</div>
-                    </div>
+                    ${Array(3).fill('<div class="stat-card is-loading"></div>').join('')}
                 </div>
                 
                 <div class="event-management">
-                    <div class="event-management-header">
-                        <h2 class="heading-4">Your Events</h2>
-                    </div>
-                    
-                    ${events.length > 0 ? `
-                        <div class="event-grid">
-                            ${events.map(event => `
-                                <div class="event-card" onclick="navigate('photographer-event', '${event.id}')">
-                                    <div class="event-card-image">
-                                        <img src="${event.coverImage}" alt="${escapeHtml(event.name)}">
-                                    </div>
-                                    <div class="event-card-content">
-                                        <h3 class="event-card-title">${escapeHtml(event.name)}</h3>
-                                        <div class="event-card-date">📅 ${formatDate(event.date)}</div>
-                                        <div class="event-card-stats">
-                                            <span class="event-stat">
-                                                <span class="event-stat-value">${event.photos.length}</span> photos
-                                            </span>
-                                            <span class="badge ${event.photos.filter(p => p.processed).length === event.photos.length && event.photos.length > 0 ? 'badge-success' : 'badge-warning'}">
-                                                ${event.photos.filter(p => p.processed).length}/${event.photos.length} processed
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
-                            `).join('')}
-                        </div>
-                    ` : renderEmptyState(
-        '📅',
-        'No events yet',
-        'Create your first event to start uploading photos',
-        'Create Event',
-        "navigate('photographer-create')"
-    )}
+                    <div class="loading-spinner" style="margin: 40px auto;"></div>
                 </div>
             </div>
         </div>
@@ -670,78 +642,92 @@ async function handleCreateEvent(event) {
 function renderPhotographerEventPage(eventId) {
     if (!requirePhotographer()) return '';
 
-    const event = getEventById(eventId);
+    // Load async data
+    setTimeout(async () => {
+        const container = document.querySelector('.container');
+        if (!container) return;
 
-    if (!event) {
-        return renderEmptyState('❌', 'Event not found', 'This event may have been removed');
-    }
+        const event = await getEventByIdAsync(eventId);
 
-    if (event.photographerId !== currentUser.id) {
-        return renderEmptyState('🔒', 'Access Denied', 'You can only view your own events');
-    }
+        if (!event) {
+            container.innerHTML = renderEmptyState('❌', 'Event not found', 'This event may have been removed');
+            return;
+        }
 
-    const processedCount = event.photos.filter(p => p.processed).length;
-    const totalCount = event.photos.length;
+        if (event.photographerId !== currentUser.id) {
+            container.innerHTML = renderEmptyState('🔒', 'Access Denied', 'You can only view your own events');
+            return;
+        }
 
-    // Store for lightbox
-    window.currentDisplayPhotos = event.photos;
+        const processedCount = event.photos.filter(p => p.processed).length;
+        const totalCount = event.photos.length;
+        window.currentDisplayPhotos = event.photos;
 
+        container.innerHTML = `
+            ${renderBackButton('Back to Dashboard', 'photographer')}
+
+            <div class="event-detail-header">
+                <div>
+                    <h1 class="event-detail-title">${escapeHtml(event.name)}</h1>
+                    <div class="event-detail-meta">
+                        <span class="event-detail-meta-item">📅 ${formatDate(event.date)}</span>
+                        <span class="event-detail-meta-item">📷 ${totalCount} photos</span>
+                        <span class="event-detail-meta-item">
+                            <span class="badge ${processedCount === totalCount && totalCount > 0 ? 'badge-success' : 'badge-info'}">
+                                ${processedCount}/${totalCount} processed
+                            </span>
+                        </span>
+                    </div>
+                </div>
+                <button class="btn btn-secondary btn-share" onclick="showEventQRCode('${eventId}', '${escapeHtml(event.name)}')">
+                    📱 Share QR Code
+                </button>
+            </div>
+
+            <div class="upload-section">
+                <h2 class="upload-section-title">Upload Photos</h2>
+                ${renderUploadZone('event-photos-upload', {
+            multiple: true,
+            maxFiles: 100,
+            hint: 'Drag and drop photos or click to browse (JPG, PNG, WebP)'
+        })}
+                
+                <div style="margin-top: var(--space-4); display: flex; gap: var(--space-3);">
+                    <button class="btn btn-primary" id="upload-photos-btn" onclick="handlePhotoUpload('${eventId}')" disabled>
+                        📤 Upload & Process Photos
+                    </button>
+                    ${totalCount > processedCount ? `
+                        <button class="btn btn-secondary" onclick="processRemainingPhotos('${eventId}')">
+                            🤖 Process Remaining (${totalCount - processedCount})
+                        </button>
+                    ` : ''}
+                </div>
+            </div>
+
+            <div class="photos-section">
+                <div class="photos-header">
+                    <h2 class="heading-4">Event Photos</h2>
+                    <span class="photos-count">${totalCount} photos uploaded</span>
+                </div>
+
+                ${renderPhotoGallery(event.photos, {
+            showDownload: false,
+            showMatch: false,
+            watermarked: false,
+            onPhotoClick: true
+        })}
+            </div>
+        `;
+    }, 100);
+
+    // Initial loading state
     return `
         <div class="page-attendee">
-            <div class="container">
-                ${renderBackButton('Back to Dashboard', 'photographer')}
-                
-                <div class="event-detail-header">
-                    <div>
-                        <h1 class="event-detail-title">${escapeHtml(event.name)}</h1>
-                        <div class="event-detail-meta">
-                            <span class="event-detail-meta-item">📅 ${formatDate(event.date)}</span>
-                            <span class="event-detail-meta-item">📷 ${totalCount} photos</span>
-                            <span class="event-detail-meta-item">
-                                <span class="badge ${processedCount === totalCount && totalCount > 0 ? 'badge-success' : 'badge-info'}">
-                                    ${processedCount}/${totalCount} processed
-                                </span>
-                            </span>
-                        </div>
-                    </div>
-                    <button class="btn btn-secondary btn-share" onclick="showEventQRCode('${eventId}', '${escapeHtml(event.name)}')">
-                        📱 Share QR Code
-                    </button>
-                </div>
-                
-                <div class="upload-section">
-                    <h2 class="upload-section-title">Upload Photos</h2>
-                    ${renderUploadZone('event-photos-upload', {
-        multiple: true,
-        maxFiles: 100,
-        hint: 'Drag and drop photos or click to browse (JPG, PNG, WebP)'
-    })}
-                    
-                    <div style="margin-top: var(--space-4); display: flex; gap: var(--space-3);">
-                        <button class="btn btn-primary" id="upload-photos-btn" onclick="handlePhotoUpload('${eventId}')" disabled>
-                            📤 Upload & Process Photos
-                        </button>
-                        ${totalCount > processedCount ? `
-                            <button class="btn btn-secondary" onclick="processRemainingPhotos('${eventId}')">
-                                🤖 Process Remaining (${totalCount - processedCount})
-                            </button>
-                        ` : ''}
-                    </div>
-                </div>
-                
-                <div class="photos-section">
-                    <div class="photos-header">
-                        <h2 class="heading-4">Event Photos</h2>
-                        <span class="photos-count">${totalCount} photos uploaded</span>
-                    </div>
-                    
-                    ${renderPhotoGallery(event.photos, {
-        showDownload: false,
-        showMatch: false,
-        watermarked: false,
-        onPhotoClick: true
-    })}
-                </div>
+            <div class="container" style="padding: 60px 20px;">
+                <div class="loading-spinner"></div>
+                <p style="color: var(--text-secondary); margin-top: 16px; text-align: center;">
+                    Loading event details...
+                </p>
             </div>
         </div>
     `;

@@ -316,9 +316,8 @@ async function deletePhoto(eventId, photoId) {
 }
 
 // Get event statistics for photographer
-function getPhotographerStats(photographerId) {
-    const events = getEventsByPhotographer(photographerId);
-
+async function getPhotographerStatsAsync(photographerId) {
+    const events = await getEventsByPhotographerAsync(photographerId);
     const totalEvents = events.length;
     const totalPhotos = events.reduce((sum, e) => sum + e.photos.length, 0);
     const processedPhotos = events.reduce((sum, e) =>
