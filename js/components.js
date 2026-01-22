@@ -70,17 +70,20 @@ function renderUploadZone(id, options = {}) {
         multiple = true,
         maxFiles = 50,
         accept = 'image/*',
+        capture = '', // New: Support for 'user' (selfie) or 'environment' (rear cam)
         onFiles = () => { },
-        hint = 'Drag and drop your photos here, or click to browse'
+        hint = 'Tap to take a photo or upload from gallery'
     } = options;
+
+    const captureAttr = capture ? `capture="${capture}"` : '';
 
     return `
         <div class="upload-zone" id="${id}" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event, '${id}')">
-            <input type="file" ${multiple ? 'multiple' : ''} accept="${accept}" 
+            <input type="file" ${multiple ? 'multiple' : ''} accept="${accept}" ${captureAttr}
                    onchange="handleFileSelect(event, '${id}')" 
                    data-max-files="${maxFiles}">
-            <div class="upload-zone-icon">📁</div>
-            <div class="upload-zone-text">Drop photos here</div>
+            <div class="upload-zone-icon">📸</div>
+            <div class="upload-zone-text">Tap to Upload / Take Photo</div>
             <div class="upload-zone-hint">${hint}</div>
         </div>
         <div class="upload-preview-grid" id="${id}-preview"></div>

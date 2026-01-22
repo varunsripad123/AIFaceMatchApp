@@ -330,7 +330,7 @@ function renderAttendeeEventPage(eventId) {
                 ${renderUploadZone('selfie-upload', {
             multiple: true,
             maxFiles: 3,
-            hint: 'Upload up to 3 selfies for better matching (JPG, PNG)'
+            hint: 'Tap to take a selfie 📸 or choose from gallery'
         })}
                 
                 <button class="btn btn-primary btn-lg" onclick="startFaceMatching('${eventId}')" style="width: 100%; margin-top: 24px;">
@@ -455,17 +455,11 @@ function renderAttendeeResultsPage(eventId) {
             </div>
 
             <div class="results-payment-cta">
-                <h3>📸 Get Your Photos Without Watermarks</h3>
-                <p>Download high-quality photos ready to share and print</p>
-                <div class="results-payment-price">
-                    $19.99 <span>for all ${matches.length} photos</span>
-                </div>
-                <div style="display: flex; gap: var(--space-4); justify-content: center; flex-wrap: wrap;">
-                    <button class="btn btn-primary btn-lg" onclick="showPaymentModal(window.matchedPhotos, '${escapeHtml(event.name)}')">
-                        💳 Get My Photos
-                    </button>
-                    <button class="btn btn-secondary btn-lg" onclick="showToast('Print option coming soon!', 'info')">
-                        🖨️ Get Prints ($4.99+)
+                <h3>🖨️ Print at the Booth</h3>
+                <p>Send your photos directly to the printing station.</p>
+                <div style="display: flex; gap: var(--space-4); justify-content: center; flex-wrap: wrap; margin-top: var(--space-4);">
+                    <button class="btn btn-primary btn-lg" onclick="emailPhotosToBooth()">
+                        📧 Send to Printer
                     </button>
                 </div>
             </div>
@@ -475,9 +469,9 @@ function renderAttendeeResultsPage(eventId) {
             </p>
 
             ${renderPhotoGallery(matches, {
-            showDownload: false,
+            showDownload: true, /* Enable downloads since it's free now */
             showMatch: true,
-            watermarked: true,
+            watermarked: false, /* Remove watermark */
             onPhotoClick: true
         })}
         `;
@@ -852,4 +846,32 @@ async function processRemainingPhotos(eventId) {
         console.error('Processing error:', error);
         showToast('Error processing photos. Please try again.', 'error');
     }
+}
+
+// Handle Email to Booth
+function emailPhotosToBooth() {
+    const matches = window.matchedPhotos || [];
+    const eventName = window.currentEventName || 'Event';
+
+    if (matches.length === 0) {
+        showToast('No photos to send', 'warning');
+        return;
+    }
+
+    // Prompt for Name
+    const userName = prompt("Please enter your name for the print order:");
+    if (!userName) return; // User cancelled
+
+    const email = 'varunsripadkota@gmail.com';
+    const subject = encodeURIComponent(`Print Order: ${userName} - ${eventName}`);
+
+    // Create a list of photo URLs
+    const photoLinks = matches.map((m, i) => `Photo ${i + 1}: ${m.url}`).join('\n\n');
+
+    const bodyHeader = encodeURIComponent(`Name: ${userName}\nEvent: ${eventName}\nPhotos: ${matches.length}\n\nPlease print these photos:\n\n`);
+    const bodyLinks = encodeURIComponent(photoLinks);
+
+    window.location.href = `mailto:${email}?subject=${subject}&body=${bodyHeader}${bodyLinks}`;
+
+    showToast('Opening email client...', 'success');
 }
