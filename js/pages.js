@@ -191,6 +191,11 @@ function renderSignupPage() {
                             </div>
                             <input type="hidden" id="signup-role" value="attendee">
                         </div>
+
+                        <div class="form-group" id="access-code-group" style="display: none;">
+                            <label class="form-label" for="signup-code">Photographer Access Code</label>
+                            <input type="text" id="signup-code" class="form-input" placeholder="Enter invite code (Required for photographers)">
+                        </div>
                         
                         <button type="submit" class="btn btn-primary btn-lg" style="width: 100%" id="signup-btn">
                             Create Account
@@ -212,6 +217,21 @@ function selectRole(role) {
     document.querySelectorAll('.role-option').forEach(el => el.classList.remove('selected'));
     document.getElementById(`role-${role}`).classList.add('selected');
     document.getElementById('signup-role').value = role;
+
+    // Show access code for photographers
+    const codeGroup = document.getElementById('access-code-group');
+    const codeInput = document.getElementById('signup-code');
+
+    if (role === 'photographer') {
+        codeGroup.style.display = 'block';
+        codeInput.required = true;
+        // Scroll into view gently
+        setTimeout(() => codeGroup.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 100);
+    } else {
+        codeGroup.style.display = 'none';
+        codeInput.required = false;
+        codeInput.value = '';
+    }
 }
 
 // Handle signup form
@@ -222,13 +242,14 @@ async function handleSignup(event) {
     const email = document.getElementById('signup-email').value;
     const password = document.getElementById('signup-password').value;
     const role = document.getElementById('signup-role').value;
+    const accessCode = document.getElementById('signup-code')?.value || '';
     const btn = document.getElementById('signup-btn');
 
     btn.classList.add('btn-loading');
     btn.disabled = true;
 
     try {
-        const user = await signUp(name, email, password, role);
+        const user = await signUp(name, email, password, role, accessCode);
         showToast(`Welcome to Nexwave, ${user.name}!`, 'success');
         navigate(user.role === 'photographer' ? 'photographer' : 'attendee');
     } catch (error) {

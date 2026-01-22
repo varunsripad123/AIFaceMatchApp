@@ -58,7 +58,7 @@ function saveUsers(users) {
 }
 
 // Sign up new user
-async function signUp(name, email, password, role = 'attendee') {
+async function signUp(name, email, password, role = 'attendee', accessCode = '') {
     // Simulate network delay
     await sleep(800);
 
@@ -79,6 +79,14 @@ async function signUp(name, email, password, role = 'attendee') {
         throw new Error('Invalid role selected');
     }
 
+    // Security Check: Require Invite Code for Photographers
+    if (role === 'photographer') {
+        const correctCode = 'NEXWAVE2024'; // Hardcoded secret for MVP
+        if (accessCode !== correctCode) {
+            throw new Error('Invalid Access Code. Please request an invite to join as a photographer.');
+        }
+    }
+
     // Check if email already exists
     const users = getUsers();
     const existingUser = users.find(u => u.email.toLowerCase() === email.toLowerCase());
@@ -96,9 +104,19 @@ async function signUp(name, email, password, role = 'attendee') {
         createdAt: new Date().toISOString()
     };
 
-    // Save user
+    // Save user locally
     users.push(newUser);
     saveUsers(users);
+
+    // Save user to Cloud (Firebase)
+    if (isFirebaseReady()) {
+        try {
+            await createUserInCloud(newUser);
+        } catch (err) {
+            console.error('Failed to create user in cloud:', err);
+            // Continue with local user
+        }
+    }
 
     // Auto login
     const userWithoutPassword = { ...newUser };
@@ -120,11 +138,28 @@ async function login(email, password) {
         throw new Error('Please enter email and password');
     }
 
-    const users = getUsers();
-    const user = users.find(u =>
-        u.email.toLowerCase() === email.toLowerCase() &&
-        u.password === password
-    );
+    let user = null;
+
+    // 1. Try Cloud Login
+    if (isFirebaseReady()) {
+        try {
+            const cloudUser = await getUserByEmailFromCloud(email);
+            if (cloudUser && cloudUser.password === password) {
+                user = cloudUser;
+            }
+        } catch (err) {
+            console.error('Cloud login failed, falling back to local:', err);
+        }
+    }
+
+    // 2. Try Local Login (Fallback)
+    if (!user) {
+        const users = getUsers();
+        user = users.find(u =>
+            u.email.toLowerCase() === email.toLowerCase() &&
+            u.password === password
+        );
+    }
 
     if (!user) {
         throw new Error('Invalid email or password');
