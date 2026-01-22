@@ -187,8 +187,9 @@
     pointer-events: none;
 }
 
-.btn-loading .btn-text {
-    visibility: hidden;
+.btn-loading .btn-text,
+.btn-loading .btn-icon {
+    color: transparent;
 }
 
 .btn-loading::after {
