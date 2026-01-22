@@ -862,7 +862,7 @@ function emailPhotosToBooth() {
     const userName = prompt("Please enter your name for the print order:");
     if (!userName) return; // User cancelled
 
-    const email = 'varunsripadkota@gmail.com';
+    const email = 'photos@nexwave.live';
     const subject = encodeURIComponent(`Print Order: ${userName} - ${eventName}`);
 
     // Create a list of photo URLs
