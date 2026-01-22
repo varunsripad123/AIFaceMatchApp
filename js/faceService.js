@@ -417,7 +417,7 @@ async function processEventPhotos(eventId, onProgress = null) {
 
 // Find matching photos with advanced algorithm
 async function findMatchingPhotos(eventId, selfieImages, onProgress = null) {
-    const event = getEventById(eventId);
+    const event = await getEventByIdAsync(eventId);
     if (!event) {
         throw new Error('Event not found');
     }
