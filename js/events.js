@@ -191,22 +191,22 @@ async function deleteEvent(eventId) {
 }
 
 // Add photos to event (using cloud storage)
+// Add photos to event (using cloud storage)
 async function addPhotosToEvent(eventId, photoDataArray) {
-    const events = getEvents();
-    const index = events.findIndex(e => e.id === eventId);
-
-    if (index === -1) {
+    // 1. Get event (Cloud or Local)
+    let event = await getEventByIdAsync(eventId);
+    if (!event) {
         throw new Error('Event not found');
     }
 
-    // Upload photos to cloud
+    // 2. Upload photos to cloud (R2)
     console.log(`☁️ Uploading ${photoDataArray.length} photos to cloud...`);
 
     const uploadResults = await uploadMultipleToCloud(photoDataArray, (progress) => {
         console.log(`  Uploaded ${progress.current}/${progress.total}`);
     });
 
-    // Filter successful uploads
+    // 3. Filter successful uploads
     const successfulUploads = uploadResults.filter(r => r.success);
     const failedCount = uploadResults.length - successfulUploads.length;
 
@@ -218,9 +218,9 @@ async function addPhotosToEvent(eventId, photoDataArray) {
         throw new Error('All uploads failed. Please check your internet connection.');
     }
 
-    const newPhotos = successfulUploads.map((result, i) => ({
+    // 4. Create new photo objects
+    const newPhotos = successfulUploads.map((result) => ({
         id: generateId(),
-        // Store cloud URLs instead of base64 data
         data: result.url,              // Full resolution URL
         displayUrl: result.displayUrl,  // Display size URL
         thumbUrl: result.thumbUrl,      // Thumbnail URL
@@ -229,17 +229,36 @@ async function addPhotosToEvent(eventId, photoDataArray) {
         processed: false
     }));
 
-    events[index].photos.push(...newPhotos);
-    events[index].updatedAt = new Date().toISOString();
+    // 5. Update Event in Firebase (or LocalStorage)
+    if (isFirebaseReady()) {
+        const updatedPhotos = [...(event.photos || []), ...newPhotos];
+        const updates = {
+            photos: updatedPhotos,
+            updatedAt: new Date().toISOString()
+        };
 
-    // Update cover image if first photos
-    if (events[index].photos.length === newPhotos.length && newPhotos[0]?.displayUrl) {
-        events[index].coverImage = newPhotos[0].displayUrl;
+        // Update cover image if none exists
+        if ((!event.coverImage || event.coverImage.includes('placeholder')) && newPhotos[0]?.displayUrl) {
+            updates.coverImage = newPhotos[0].displayUrl;
+        }
+
+        await updateEventInCloud(eventId, updates);
+        clearEventsCache();
+        console.log(`✅ ${successfulUploads.length} photos added to Firebase event!`);
+    } else {
+        // Fallback to LocalStorage
+        const events = getEvents();
+        const index = events.findIndex(e => e.id === eventId);
+        if (index !== -1) {
+            events[index].photos.push(...newPhotos);
+            events[index].updatedAt = new Date().toISOString();
+
+            if (events[index].photos.length === newPhotos.length && newPhotos[0]?.displayUrl) {
+                events[index].coverImage = newPhotos[0].displayUrl;
+            }
+            saveEvents(events);
+        }
     }
-
-    saveEvents(events);
-
-    console.log(`✅ ${successfulUploads.length} photos uploaded to cloud!`);
 
     return newPhotos;
 }

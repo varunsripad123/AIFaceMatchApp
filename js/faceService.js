@@ -162,7 +162,15 @@ async function assessImageQuality(imageSrc) {
 
 // Extract face descriptors with quality metadata
 async function extractFaceDescriptors(imageSrc) {
-    const img = await loadImage(imageSrc);
+    // FIX: Proxy R2 images through Worker to handle CORS
+    let safeUrl = imageSrc;
+    if (imageSrc && imageSrc.includes('r2.dev')) {
+        const filename = imageSrc.split('/').pop();
+        // Use the worker proxy to get CORS headers
+        safeUrl = `https://nexwave-worker.nexwave-api.workers.dev/photos/${filename}`;
+    }
+
+    const img = await loadImage(safeUrl);
     const detections = await detectFaces(img);
 
     return detections.map(d => ({
@@ -356,8 +364,10 @@ function calculateConfidence(distance) {
 }
 
 // Process photos for an event with progress callback
+// Process photos for an event with progress callback
 async function processEventPhotos(eventId, onProgress = null) {
-    const event = getEventById(eventId);
+    // FIX: Use async cloud fetch instead of sync local fetch
+    const event = await getEventByIdAsync(eventId);
     if (!event) {
         throw new Error('Event not found');
     }
@@ -374,7 +384,8 @@ async function processEventPhotos(eventId, onProgress = null) {
     for (const photo of unprocessedPhotos) {
         try {
             const descriptors = await extractFaceDescriptors(photo.data);
-            updatePhotoDescriptors(eventId, photo.id, descriptors);
+            // FIX: Await the update
+            await updatePhotoDescriptors(eventId, photo.id, descriptors);
 
             totalFacesFound += descriptors.length;
             processed++;
@@ -392,7 +403,7 @@ async function processEventPhotos(eventId, onProgress = null) {
             console.log(`  ✓ Photo ${processed}/${total}: ${descriptors.length} face(s) detected`);
         } catch (error) {
             console.error(`  ✗ Error processing photo ${photo.id}:`, error);
-            updatePhotoDescriptors(eventId, photo.id, []);
+            await updatePhotoDescriptors(eventId, photo.id, []);
         }
 
         // Small delay to prevent UI freezing

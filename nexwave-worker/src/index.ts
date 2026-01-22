@@ -40,7 +40,7 @@ export default {
 
 			// List files: GET /list
 			if (path === '/list' && request.method === 'GET') {
-				return await handleList(env);
+				return await handleList(request, env);
 			}
 
 			// Delete file: DELETE /photos/{filename}
@@ -82,7 +82,8 @@ async function handleUpload(request: Request, env: Env): Promise<Response> {
 			},
 		});
 
-		const publicUrl = `https://pub-480c13562e3442c99230dc7b06e210a2.r2.dev/${filename}`;
+		const origin = new URL(request.url).origin;
+		const publicUrl = `${origin}/photos/${filename}`;
 
 		return jsonResponse({
 			success: true,
@@ -109,7 +110,8 @@ async function handleUpload(request: Request, env: Env): Promise<Response> {
 			},
 		});
 
-		const publicUrl = `https://pub-480c13562e3442c99230dc7b06e210a2.r2.dev/${filename}`;
+		const origin = new URL(request.url).origin;
+		const publicUrl = `${origin}/photos/${filename}`;
 
 		return jsonResponse({
 			success: true,
@@ -138,14 +140,15 @@ async function handleGet(key: string, env: Env): Promise<Response> {
 }
 
 // Handle file listing
-async function handleList(env: Env): Promise<Response> {
+async function handleList(request: Request, env: Env): Promise<Response> {
 	const list = await env.PHOTOS.list({ limit: 1000 });
+	const origin = new URL(request.url).origin;
 
 	const files = list.objects.map(obj => ({
 		key: obj.key,
 		size: obj.size,
 		uploaded: obj.uploaded,
-		url: `https://pub-480c13562e3442c99230dc7b06e210a2.r2.dev/${obj.key}`,
+		url: `${origin}/photos/${obj.key}`,
 	}));
 
 	return jsonResponse({ files, count: files.length });
