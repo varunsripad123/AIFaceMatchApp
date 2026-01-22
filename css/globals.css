@@ -21,12 +21,12 @@
     --text-tertiary: rgba(255, 255, 255, 0.5);
     --text-muted: rgba(255, 255, 255, 0.3);
     
-    /* Accent Colors - Vibrant Gradient */
-    --accent-primary: #6366f1;
-    --accent-secondary: #8b5cf6;
-    --accent-tertiary: #a855f7;
-    --accent-gradient: linear-gradient(135deg, #6366f1 0%, #a855f7 50%, #ec4899 100%);
-    --accent-gradient-hover: linear-gradient(135deg, #818cf8 0%, #c084fc 50%, #f472b6 100%);
+    /* Accent Colors - Solid & Modern */
+    --accent-primary: #7c3aed; /* A modern, accessible purple */
+    --accent-secondary: #9f67ff;
+    --accent-tertiary: #c7d2fe;
+    --accent-gradient: var(--accent-primary); /* Replaced gradient with solid color */
+    --accent-gradient-hover: #6d28d9; /* A slightly darker shade for hover */
     
     /* Status Colors */
     --success: #22c55e;
