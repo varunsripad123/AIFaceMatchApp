@@ -23,8 +23,9 @@ async function generateQRCode(text, size = 200) {
 
 // Generate event share link
 function getEventShareLink(eventId) {
-    // Get base URL (works for both localhost and production)
-    const baseUrl = window.location.origin + window.location.pathname;
+    // FORCE Production URL for QR codes (so localhost testing generates valid live links)
+    // You can change this to 'https://www.nexwave.live/' later if you prefer
+    const baseUrl = 'https://nexwavelive.netlify.app/';
     return `${baseUrl}#event/${eventId}`;
 }
 
