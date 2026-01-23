@@ -325,6 +325,7 @@ function renderAttendeeEventPage(eventId) {
         if (event.accessCode && !isVerified) {
             // Show access code entry form
             contentContainer.innerHTML = `
+                ${renderStepper(1)}
                 ${renderBackButton('Back to Events', 'attendee')}
                 
                 <div class="selfie-upload-container">
@@ -354,6 +355,7 @@ function renderAttendeeEventPage(eventId) {
 
         // Show selfie upload (code verified or no code required)
         contentContainer.innerHTML = `
+            ${renderStepper(1)}
             ${renderBackButton('Back to Events', 'attendee')}
             
             <div class="selfie-upload-container">
@@ -499,6 +501,7 @@ function renderAttendeeResultsPage(eventId) {
 
         if (matches.length === 0) {
             container.innerHTML = `
+                ${renderStepper(2)}
                 ${renderBackButton('Back to Event', `attendee-event/${eventId}`)}
                 ${renderNoMatchFound(event.name, `navigate('attendee-event', '${eventId}')`)}
             `;
@@ -508,6 +511,7 @@ function renderAttendeeResultsPage(eventId) {
         window.currentEventName = event.name;
 
         container.innerHTML = `
+            ${renderStepper(2)}
             ${renderBackButton('Back to Event', `attendee-event/${eventId}`)}
 
             <div class="results-header">

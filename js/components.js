@@ -449,3 +449,51 @@ function renderBackButton(text, route) {
         </button>
     `;
 }
+
+// Render persistent progress stepper
+function renderStepper(currentStep) {
+    const steps = [
+        { num: 1, label: 'Scan QR' },
+        { num: 2, label: 'Gallery' },
+        { num: 3, label: 'Package' },
+        { num: 4, label: 'Order' }
+    ];
+
+    return `
+        <div class="stepper-container" style="padding: var(--space-4) 0; margin-bottom: var(--space-4);">
+            <div style="display: flex; justify-content: space-between; align-items: center; max-width: 400px; margin: 0 auto; position: relative;">
+                
+                <!-- Connector Line -->
+                <div style="position: absolute; top: 16px; left: 0; right: 0; height: 2px; background: var(--bg-tertiary); z-index: 0;"></div>
+                
+                ${steps.map(step => {
+        const isActive = step.num <= currentStep;
+        const isCurrent = step.num === currentStep;
+
+        return `
+                    <div class="stepper-step" style="position: relative; z-index: 1; text-align: center; background: none;">
+                        <div style="
+                            width: 32px; height: 32px; border-radius: 50%; 
+                            background: ${isActive ? 'var(--accent-primary)' : 'var(--bg-tertiary)'};
+                            color: ${isActive ? 'black' : 'var(--text-muted)'};
+                            display: flex; align-items: center; justify-content: center;
+                            font-weight: bold; font-size: 0.875rem;
+                            margin: 0 auto 8px;
+                            box-shadow: ${isCurrent ? '0 0 0 4px rgba(251, 191, 36, 0.2)' : 'none'};
+                            transition: all 0.3s ease;
+                        ">
+                            ${isActive && !isCurrent ? '✓' : step.num}
+                        </div>
+                        <div style="
+                            font-size: 0.75rem; 
+                            color: ${isActive ? 'var(--text-primary)' : 'var(--text-muted)'};
+                            font-weight: ${isActive ? '600' : '400'};
+                        ">
+                            ${step.label}
+                        </div>
+                    </div>
+                `}).join('')}
+            </div>
+        </div>
+    `;
+}

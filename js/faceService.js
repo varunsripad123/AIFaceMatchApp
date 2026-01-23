@@ -476,7 +476,10 @@ async function findMatchingPhotos(eventId, selfieImages, onProgress = null) {
     if (onProgress) onProgress({ step: 4, message: 'Preparing results...' });
 
     const matchedPhotos = matches.map(match => {
-        const photo = event.photos.find(p => p.id === match.photoId);
+        const photos = event.photos || [];
+        const photo = photos.find(p => p.id === match.photoId);
+        if (!photo) return null; // Should not happen if data is consistent using eventDescriptors
+
         return {
             ...photo,
             matchConfidence: match.confidence,
@@ -487,7 +490,7 @@ async function findMatchingPhotos(eventId, selfieImages, onProgress = null) {
                 faceLocation: match.faceBox
             }
         };
-    });
+    }).filter(p => p !== null);
 
     return matchedPhotos;
 }
