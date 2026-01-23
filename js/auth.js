@@ -201,7 +201,6 @@ async function login(email, password) {
         }
 
         notifyAuthChange();
-        showToast(`Welcome back, ${currentUser.name}!`, 'success');
 
         return currentUser;
 
