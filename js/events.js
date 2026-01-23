@@ -88,7 +88,7 @@ function getPublicEvents() {
 }
 
 // Create new event
-async function createEvent(name, date, description = '', coverImage = null) {
+async function createEvent(name, date, description = '', coverImage = null, accessCode = '') {
     await sleep(500);
 
     if (!requirePhotographer()) {
@@ -103,6 +103,11 @@ async function createEvent(name, date, description = '', coverImage = null) {
         throw new Error('Please select an event date');
     }
 
+    // Validate access code
+    if (!accessCode || !/^[0-9]{4}$/.test(accessCode)) {
+        throw new Error('Please enter a valid 4-digit access code');
+    }
+
     const eventData = {
         name: name.trim(),
         date: date,
@@ -112,6 +117,7 @@ async function createEvent(name, date, description = '', coverImage = null) {
         photographerName: currentUser.name,
         photos: [],
         faceDescriptors: [],
+        accessCode: accessCode, // Store the 4-digit code
         isPublic: true
     };
 

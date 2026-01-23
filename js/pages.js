@@ -318,6 +318,41 @@ function renderAttendeeEventPage(eventId) {
             return;
         }
 
+        // Check if user has already entered correct code for this event (stored in sessionStorage)
+        const storedCode = sessionStorage.getItem(`event_code_${eventId}`);
+        const isVerified = storedCode === event.accessCode;
+
+        if (event.accessCode && !isVerified) {
+            // Show access code entry form
+            contentContainer.innerHTML = `
+                ${renderBackButton('Back to Events', 'attendee')}
+                
+                <div class="selfie-upload-container">
+                    <div class="page-header" style="text-align: center;">
+                        <h1 class="page-title">${escapeHtml(event.name)}</h1>
+                        <p class="page-subtitle">Enter the event access code to continue</p>
+                    </div>
+                    
+                    <div class="form-group" style="max-width: 300px; margin: 0 auto;">
+                        <input type="text" id="event-access-code" class="form-input" 
+                               placeholder="Enter 4-digit code" 
+                               pattern="[0-9]{4}" maxlength="4"
+                               style="font-size: 2rem; text-align: center; letter-spacing: 1rem;">
+                    </div>
+                    
+                    <button class="btn btn-primary btn-lg" onclick="verifyEventCode('${eventId}')" style="width: 100%; max-width: 300px; margin: 24px auto 0; display: block;">
+                        🔓 Unlock Event
+                    </button>
+                    
+                    <p style="text-align: center; color: var(--text-secondary); margin-top: 16px; font-size: 0.875rem;">
+                        Ask the photographer for the access code
+                    </p>
+                </div>
+            `;
+            return;
+        }
+
+        // Show selfie upload (code verified or no code required)
         contentContainer.innerHTML = `
             ${renderBackButton('Back to Events', 'attendee')}
             
@@ -351,6 +386,36 @@ function renderAttendeeEventPage(eventId) {
             </div>
         </div>
     `;
+}
+
+// Verify event access code
+async function verifyEventCode(eventId) {
+    const codeInput = document.getElementById('event-access-code');
+    const enteredCode = codeInput?.value || '';
+
+    if (!/^[0-9]{4}$/.test(enteredCode)) {
+        showToast('Please enter a 4-digit code', 'warning');
+        return;
+    }
+
+    const event = await getEventByIdAsync(eventId);
+
+    if (!event) {
+        showToast('Event not found', 'error');
+        return;
+    }
+
+    if (enteredCode === event.accessCode) {
+        // Store verified code in sessionStorage
+        sessionStorage.setItem(`event_code_${eventId}`, enteredCode);
+        showToast('Access granted! 🎉', 'success');
+        // Reload the page to show selfie upload
+        navigate('attendee-event', eventId);
+    } else {
+        showToast('Incorrect code. Please try again.', 'error');
+        codeInput.value = '';
+        codeInput.focus();
+    }
 }
 
 // Listen for file uploads on attendee page
@@ -620,6 +685,17 @@ function renderCreateEventPage() {
                         <textarea id="event-description" class="form-input" rows="3"
                                   placeholder="Brief description of the event"></textarea>
                     </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="event-code">Access Code (4 digits) *</label>
+                        <input type="text" id="event-code" class="form-input" 
+                               placeholder="e.g., 1234" required 
+                               pattern="[0-9]{4}" maxlength="4"
+                               style="font-size: 1.5rem; text-align: center; letter-spacing: 0.5rem;">
+                        <p style="color: var(--text-secondary); font-size: 0.875rem; margin-top: 0.5rem;">
+                            Attendees will need this code to access photos
+                        </p>
+                    </div>
                     
                     <button type="submit" class="btn btn-primary btn-lg" style="width: 100%" id="create-event-btn">
                         Create Event
@@ -637,13 +713,20 @@ async function handleCreateEvent(event) {
     const name = document.getElementById('event-name').value;
     const date = document.getElementById('event-date').value;
     const description = document.getElementById('event-description').value;
+    const accessCode = document.getElementById('event-code').value;
     const btn = document.getElementById('create-event-btn');
+
+    // Validate access code
+    if (!/^[0-9]{4}$/.test(accessCode)) {
+        showToast('Please enter a 4-digit access code', 'error');
+        return;
+    }
 
     btn.classList.add('btn-loading');
     btn.disabled = true;
 
     try {
-        const newEvent = await createEvent(name, date, description);
+        const newEvent = await createEvent(name, date, description, null, accessCode);
         navigate('photographer-event', newEvent.id);
     } catch (error) {
         showToast(error.message, 'error');
