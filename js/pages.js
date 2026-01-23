@@ -328,8 +328,9 @@ function renderAttendeeEventPage(eventId) {
                 </div>
                 
                 ${renderUploadZone('selfie-upload', {
-            multiple: false, // Force single file to ensure standard camera intent
+            multiple: false,
             maxFiles: 1,
+            capture: 'user', // Force front camera on mobile
             hint: 'Tap to take a selfie 📸'
         })}
                 
