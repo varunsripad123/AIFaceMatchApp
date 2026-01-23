@@ -8,15 +8,23 @@ let currentUser = null;
 let currentUserProfile = null;
 let authListeners = [];
 let authInitialized = false;
+let authReadyPromise = null;
+let authReadyResolve = null;
 
 // Initialize auth with Firebase Auth listener
 async function initAuth() {
-    if (authInitialized) return;
+    if (authInitialized) return authReadyPromise;
+    authInitialized = true;
 
     // Ensure Firebase is ready
     if (!isFirebaseReady()) {
         await initFirebase();
     }
+
+    // Create promise that resolves when first auth state is determined
+    authReadyPromise = new Promise(resolve => {
+        authReadyResolve = resolve;
+    });
 
     // Set up Firebase Auth state listener
     firebase.auth().onAuthStateChanged(async (firebaseUser) => {
@@ -52,10 +60,22 @@ async function initAuth() {
         }
 
         notifyAuthChange();
+
+        // Resolve the ready promise on first callback
+        if (authReadyResolve) {
+            authReadyResolve();
+            authReadyResolve = null;
+        }
     });
 
-    authInitialized = true;
     console.log('🔐 Firebase Auth initialized');
+    return authReadyPromise;
+}
+
+// Wait for auth to be ready (use this before checking currentUser)
+async function waitForAuthReady() {
+    if (!authInitialized) await initAuth();
+    if (authReadyPromise) await authReadyPromise;
 }
 
 // Subscribe to auth changes
