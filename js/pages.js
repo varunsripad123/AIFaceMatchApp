@@ -433,25 +433,20 @@ document.addEventListener('filesChanged', (e) => {
 
 // Start face matching process
 async function startFaceMatching(eventId) {
-    let selfies = [];
+    let selfieDataUrls = [];
 
-    // Check new Selfie Uploader first (hidden input)
+    // Check new Selfie Uploader first (hidden input with data URL)
     const dataUrlInput = document.getElementById('selfie-upload-data-url');
     if (dataUrlInput && dataUrlInput.value) {
-        try {
-            const res = await fetch(dataUrlInput.value);
-            const blob = await res.blob();
-            const file = new File([blob], "selfie.jpg", { type: "image/jpeg" });
-            selfies = [file];
-        } catch (e) {
-            console.error("Error converting selfie data URL:", e);
-        }
+        // Data URL is already in the correct format
+        selfieDataUrls = [dataUrlInput.value];
     } else {
-        // Fallback to legacy
-        selfies = getUploadedFiles('selfie-upload');
+        // Fallback to legacy uploader (returns objects with .data property)
+        const legacyFiles = getUploadedFiles('selfie-upload');
+        selfieDataUrls = legacyFiles.map(f => f.data);
     }
 
-    if (selfies.length === 0) {
+    if (selfieDataUrls.length === 0) {
         showToast('Please take a selfie or upload a photo', 'warning');
         return;
     }
@@ -472,8 +467,7 @@ async function startFaceMatching(eventId) {
         updateProgressStep(0, true);
 
         // Steps 1-3: Match faces
-        const selfieData = selfies.map(s => s.data);
-        const matches = await findMatchingPhotos(eventId, selfieData, (progress) => {
+        const matches = await findMatchingPhotos(eventId, selfieDataUrls, (progress) => {
             updateProgressStep(progress.step);
         });
 

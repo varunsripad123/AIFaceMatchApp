@@ -210,6 +210,15 @@ function renderSelfieUploader(id) {
 
 // Logic for Selfie Camera
 async function startSelfieCamera(id) {
+    // Check if camera is supported
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        showToast("Camera not supported on this device. Please upload a photo.", "warning");
+        // Auto-trigger file upload
+        const fileInput = document.querySelector(`#${id}-select input[type="file"]`);
+        if (fileInput) fileInput.click();
+        return;
+    }
+
     try {
         const stream = await navigator.mediaDevices.getUserMedia({
             video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } }
@@ -229,8 +238,25 @@ async function startSelfieCamera(id) {
         document.getElementById(`${id}-preview-mode`).style.display = 'none';
 
     } catch (err) {
-        console.error("Camera access denied:", err);
-        showToast("Could not access camera. Please upload a file instead.", "error");
+        console.error("Camera access error:", err);
+
+        let message = "Could not access camera. Please upload a file instead.";
+
+        if (err.name === 'NotAllowedError') {
+            message = "Camera permission denied. Please allow camera access or upload a photo.";
+        } else if (err.name === 'NotFoundError') {
+            message = "No camera found. Please upload a photo instead.";
+        } else if (err.name === 'NotReadableError') {
+            message = "Camera is in use by another app. Please close other apps or upload a photo.";
+        } else if (err.name === 'OverconstrainedError') {
+            message = "Camera doesn't support required settings. Please upload a photo.";
+        }
+
+        showToast(message, "warning");
+
+        // Auto-trigger file upload as fallback
+        const fileInput = document.querySelector(`#${id}-select input[type="file"]`);
+        if (fileInput) fileInput.click();
     }
 }
 
