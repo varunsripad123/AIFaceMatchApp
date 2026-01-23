@@ -189,6 +189,11 @@ async function downloadPhoto(imageSrc, filename, addWatermark = false) {
         const imageData = await createDownloadableImage(imageSrc, addWatermark);
         downloadImage(imageData, filename);
         showToast('Download started!', 'success');
+
+        // Track download for analytics
+        if (window.currentEventId && typeof trackDownload === 'function') {
+            trackDownload(window.currentEventId, 1);
+        }
     } catch (error) {
         console.error('Download error:', error);
         showToast('Failed to download image', 'error');
@@ -212,5 +217,11 @@ async function downloadAllPhotos(photos, eventName, addWatermark = false) {
         }
     }
 
+    // Track all downloads for analytics
+    if (window.currentEventId && typeof trackDownload === 'function') {
+        trackDownload(window.currentEventId, photos.length);
+    }
+
     showToast('All downloads complete!', 'success');
 }
+

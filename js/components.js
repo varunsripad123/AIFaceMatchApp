@@ -64,13 +64,14 @@ function hideProgressModal() {
     modal.classList.remove('active');
 }
 
-// Render upload zone component
+// Render upload zone component (Legacy - kept for backward compat if needed elsewhere)
 function renderUploadZone(id, options = {}) {
+    // ... existing implementation ...
     const {
         multiple = true,
         maxFiles = 50,
         accept = 'image/*',
-        capture = '', // New: Support for 'user' (selfie) or 'environment' (rear cam)
+        capture = '',
         onFiles = () => { },
         hint = 'Tap to take a photo or upload from gallery'
     } = options;
@@ -90,7 +91,221 @@ function renderUploadZone(id, options = {}) {
     `;
 }
 
-// Handle drag over
+// ==========================================
+// NEW: Selfie Uploader Component (React Port)
+// ==========================================
+
+let selfieState = {
+    mode: 'select', // 'select' | 'camera' | 'preview'
+    stream: null,
+    capturedImage: null
+};
+
+// Icons (Lucide-like SVGs)
+const Icons = {
+    Camera: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>`,
+    Upload: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>`,
+    Refresh: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 12"/><path d="M3 3v9h9"/></svg>`,
+    X: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>`
+};
+
+function renderSelfieUploader(id) {
+    // Determine content based on state (simplified for initial render, dynamic updates handled by JS)
+    // We render container and let init functions handle the state logic
+    return `
+        <div id="${id}-wrapper" class="w-full max-w-md mx-auto selfie-uploader-wrapper">
+            <!-- Hidden Canvas for capture -->
+            <canvas id="${id}-canvas" class="hidden" style="display:none;"></canvas>
+            
+            <!-- State: SELECT -->
+            <div id="${id}-select" class="flex flex-col gap-4">
+                <div class="aspect-[3/4] bg-muted rounded-2xl flex flex-col items-center justify-center gap-6 border-2 border-dashed border-border p-6" style="border: 2px dashed var(--border); border-radius: var(--radius-xl); background: var(--bg-secondary); aspect-ratio: 3/4; display: flex; flex-direction: column; align-items: center; justify-content: center; margin-bottom: var(--space-4);">
+                    <div class="w-24 h-24 rounded-full bg-secondary flex items-center justify-center mb-4" style="width: 6rem; height: 6rem; border-radius: 9999px; background: var(--bg-tertiary); display: flex; align-items: center; justify-content: center;">
+                        <div class="text-muted-foreground w-12 h-12" style="color: var(--text-tertiary); transform: scale(2);">${Icons.Camera}</div>
+                    </div>
+                    <div class="text-center px-6">
+                        <p class="text-lg font-semibold text-foreground" style="font-weight: 600; font-size: 1.125rem; margin-bottom: 0.5rem; color: var(--text-primary);">Take a selfie</p>
+                        <p class="text-sm text-muted-foreground" style="font-size: 0.875rem; color: var(--text-secondary);">
+                            We'll use AI to find your photos in the event gallery
+                        </p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3" style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+                    <button class="btn btn-primary btn-lg gap-2" onclick="startSelfieCamera('${id}')" style="display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
+                        <span style="width: 20px;">${Icons.Camera}</span>
+                        Camera
+                    </button>
+                    <label style="display: block;">
+                         <input
+                            type="file"
+                            class="hidden"
+                            accept="image/*"
+                            onchange="handleSelfieFileSelect(event, '${id}')"
+                            style="display: none;"
+                        />
+                        <div class="btn btn-outline btn-lg w-full gap-2" style="display: flex; align-items: center; justify-content: center; gap: 0.5rem; cursor: pointer; background: transparent; border: 1px solid var(--border); color: var(--text-primary);">
+                             <span style="width: 20px;">${Icons.Upload}</span>
+                            Upload
+                        </div>
+                    </label>
+                </div>
+            </div>
+
+            <!-- State: CAMERA (Hidden by default) -->
+            <div id="${id}-camera" class="flex flex-col gap-4" style="display: none;">
+                <div class="relative aspect-[3/4] bg-foreground rounded-2xl overflow-hidden" style="position: relative; aspect-ratio: 3/4; background: black; border-radius: var(--radius-xl); overflow: hidden; margin-bottom: var(--space-4);">
+                    <video
+                        id="${id}-video"
+                        autoplay
+                        playsinline
+                        muted
+                        style="width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1);"
+                    ></video>
+                    <!-- Face outline guide -->
+                    <div class="absolute inset-0 flex items-center justify-center pointer-events-none" style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none;">
+                        <div style="width: 48%; height: 60%; border: 4px solid rgba(251, 191, 36, 0.5); border-radius: 50%;"></div>
+                    </div>
+                </div>
+
+                <div class="flex gap-3" style="display: flex; gap: 0.75rem;">
+                    <button class="btn btn-outline btn-lg flex-1" onclick="resetSelfie('${id}')" style="flex: 1;">
+                        Cancel
+                    </button>
+                    <button class="btn btn-primary btn-lg flex-1 gap-2" onclick="captureSelfie('${id}')" style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
+                        <span style="width: 20px;">${Icons.Camera}</span>
+                        Capture
+                    </button>
+                </div>
+            </div>
+
+            <!-- State: PREVIEW (Hidden by default) -->
+            <div id="${id}-preview-mode" class="flex flex-col gap-4" style="display: none;">
+                <div class="relative aspect-[3/4] bg-muted rounded-2xl overflow-hidden" style="position: relative; aspect-ratio: 3/4; background: var(--bg-secondary); border-radius: var(--radius-xl); overflow: hidden; margin-bottom: var(--space-4);">
+                    <img
+                        id="${id}-result-img"
+                        src=""
+                        alt="Your selfie"
+                        style="width: 100%; height: 100%; object-fit: cover;"
+                    />
+                    <button
+                        onclick="resetSelfie('${id}')"
+                        style="position: absolute; top: 12px; right: 12px; padding: 8px; border-radius: 50%; background: rgba(255,255,255,0.9); border: none; box-shadow: var(--shadow-soft); cursor: pointer; color: var(--text-primary); display: flex; align-items: center; justify-content: center;"
+                    >
+                        <span style="width: 20px; height: 20px;">${Icons.X}</span>
+                    </button>
+                </div>
+
+                <button class="btn btn-outline btn-lg gap-2" onclick="resetSelfie('${id}')" style="display: flex; align-items: center; justify-content: center; gap: 0.5rem; width: 100%;">
+                    <span style="width: 20px;">${Icons.Refresh}</span>
+                    Retake Photo
+                </button>
+            </div>
+            
+            <!-- Hidden Input for compatibility with existing form logic -->
+            <input type="hidden" id="${id}-data-url">
+        </div>
+    `;
+}
+
+// Logic for Selfie Camera
+async function startSelfieCamera(id) {
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } }
+        });
+
+        selfieState.stream = stream;
+        selfieState.mode = 'camera';
+
+        const video = document.getElementById(`${id}-video`);
+        if (video) {
+            video.srcObject = stream;
+        }
+
+        // Update UI
+        document.getElementById(`${id}-select`).style.display = 'none';
+        document.getElementById(`${id}-camera`).style.display = 'block';
+        document.getElementById(`${id}-preview-mode`).style.display = 'none';
+
+    } catch (err) {
+        console.error("Camera access denied:", err);
+        showToast("Could not access camera. Please upload a file instead.", "error");
+    }
+}
+
+function stopSelfieCamera() {
+    if (selfieState.stream) {
+        selfieState.stream.getTracks().forEach(track => track.stop());
+        selfieState.stream = null;
+    }
+}
+
+function captureSelfie(id) {
+    const video = document.getElementById(`${id}-video`);
+    const canvas = document.getElementById(`${id}-canvas`);
+
+    if (video && canvas) {
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const ctx = canvas.getContext("2d");
+
+        if (ctx) {
+            // Mirror the image
+            ctx.translate(canvas.width, 0);
+            ctx.scale(-1, 1);
+            ctx.drawImage(video, 0, 0);
+
+            const imageData = canvas.toDataURL("image/jpeg", 0.9);
+            selfieState.capturedImage = imageData;
+
+            stopSelfieCamera();
+
+            // Show preview
+            document.getElementById(`${id}-result-img`).src = imageData;
+            document.getElementById(`${id}-data-url`).value = imageData; // Store for form submission
+
+            document.getElementById(`${id}-select`).style.display = 'none';
+            document.getElementById(`${id}-camera`).style.display = 'none';
+            document.getElementById(`${id}-preview-mode`).style.display = 'block';
+
+            // Trigger global event/callback if needed or just let the view handle the hidden input
+            // If the existing app expects files array, we might need adjustments.
+            // For now, we assume the code will look for the image data or we simulate a file input.
+        }
+    }
+}
+
+function handleSelfieFileSelect(event, id) {
+    const file = event.target.files?.[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const imageData = e.target.result;
+            selfieState.capturedImage = imageData;
+
+            // Show preview
+            document.getElementById(`${id}-result-img`).src = imageData;
+            document.getElementById(`${id}-data-url`).value = imageData;
+
+            document.getElementById(`${id}-select`).style.display = 'none';
+            document.getElementById(`${id}-camera`).style.display = 'none';
+            document.getElementById(`${id}-preview-mode`).style.display = 'block';
+        };
+        reader.readAsDataURL(file);
+    }
+}
+
+function resetSelfie(id) {
+    stopSelfieCamera();
+    selfieState.capturedImage = null;
+    document.getElementById(`${id}-data-url`).value = "";
+
+    document.getElementById(`${id}-select`).style.display = 'block';
+    document.getElementById(`${id}-camera`).style.display = 'none';
+    document.getElementById(`${id}-preview-mode`).style.display = 'none';
+}
+
 function handleDragOver(event) {
     event.preventDefault();
     event.currentTarget.classList.add('dragover');
@@ -382,6 +597,121 @@ function renderLightbox() {
 
     lightbox.classList.add('active');
     document.body.style.overflow = 'hidden';
+}
+
+// ==========================================
+// NEW: PhotoCard Component (React Port)
+// ==========================================
+// ==========================================
+// NEW: PhotoCard Component (React Port)
+// ==========================================
+function renderPhotoCard(photo, options = {}) {
+    // Options: isSelected, onSelect (string fn), onZoom (string fn), showWatermark, matchScore
+    const {
+        isSelected = false,
+        onSelect = '',
+        onZoom = '',
+        showWatermark = true,
+        matchScore = null
+    } = options;
+
+    return `
+    <div class="group relative rounded-xl overflow-hidden cursor-pointer transition-all duration-300"
+         onclick="${onSelect}"
+         onmouseover="this.querySelector('.photo-card-hover-overlay').style.opacity='1'; this.querySelector('.photo-card-img').style.transform='scale(1.05)'; this.style.boxShadow='var(--shadow-medium)';"
+         onmouseout="this.querySelector('.photo-card-hover-overlay').style.opacity='0'; this.querySelector('.photo-card-img').style.transform='scale(1.0)'; this.style.boxShadow='${isSelected ? 'var(--shadow-elevated)' : 'var(--shadow-soft)'}';"
+         style="position: relative; border-radius: var(--radius-xl); overflow: hidden; cursor: pointer; transition: all 0.3s ease; box-shadow: ${isSelected ? 'var(--shadow-elevated)' : 'var(--shadow-soft)'}; ${isSelected ? 'box-shadow: 0 0 0 4px var(--primary);' : ''}">
+        
+        <!-- Image -->
+        <div class="aspect-[4/3] bg-muted ${showWatermark ? 'watermark-overlay' : ''}" style="aspect-ratio: 4/3; background: var(--bg-secondary); position: relative;">
+            <img src="${photo.url || photo.data}" alt="Event photo" 
+                 class="photo-card-img"
+                 style="width: 100%; height: 100%; object-fit: cover; transition: transform 0.5s ease;">
+        </div>
+
+        <!-- Selection indicator -->
+        <div style="position: absolute; top: 12px; left: 12px; width: 24px; height: 24px; border-radius: 50%; border: 2px solid ${isSelected ? 'var(--primary)' : 'var(--border)'}; background: ${isSelected ? 'var(--primary)' : 'rgba(255,255,255,0.8)'}; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
+            ${isSelected ? '<span style="color: white; font-size: 12px;">✓</span>' : ''}
+        </div>
+
+        <!-- Match score badge -->
+        ${matchScore ? `
+            <div style="position: absolute; top: 12px; right: 12px; background: var(--accent); color: var(--accent-foreground); font-size: 0.75rem; font-weight: bold; padding: 4px 8px; border-radius: 9999px; box-shadow: var(--shadow-soft);">
+                ${matchScore}% match
+            </div>
+        ` : ''}
+
+        <!-- Hover overlay -->
+        <div class="photo-card-hover-overlay" style="position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.6), transparent); display: flex; align-items: flex-end; justify-content: flex-end; padding: 12px; opacity: 0; transition: opacity 0.3s ease;">
+            <button onclick="event.stopPropagation(); ${onZoom}" style="padding: 8px; border-radius: 8px; background: rgba(255,255,255,0.9); backdrop-filter: blur(4px); border: none; cursor: pointer; display: flex; align-items: center; justify-content: center;">
+                <span style="display: block; width: 16px; height: 16px;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+                </span>
+            </button>
+        </div>
+    </div>
+    `;
+}
+
+// ==========================================
+// NEW: StatCard Component (React Port)
+// ==========================================
+function renderStatCard(title, value, options = {}) {
+    const {
+        subtitle = '',
+        icon = 'BarChart', // Lucide icon name or SVG string
+        trend = null, // { value: number, isPositive: boolean }
+        variant = 'default' // default | primary | accent
+    } = options;
+
+    const variants = {
+        default: 'background: var(--card); border: 1px solid var(--border);',
+        primary: 'background: rgba(37, 99, 235, 0.05); border: 1px solid rgba(37, 99, 235, 0.2);',
+        accent: 'background: rgba(251, 191, 36, 0.1); border: 1px solid rgba(251, 191, 36, 0.3);'
+    };
+
+    const iconVariants = {
+        default: 'background: var(--bg-secondary); color: var(--foreground);',
+        primary: 'background: var(--primary); color: var(--primary-foreground);',
+        accent: 'background: var(--accent); color: var(--accent-foreground);'
+    };
+
+    // Helper to get SVG for common icons
+    const getIconSvg = (name) => {
+        if (name.includes('<svg')) return name; // Already SVG
+        // Map common names to generic SVG or specific ones defined in Icons
+        return Icons[name] || Icons.Camera; // Fallback
+    };
+
+    const isPositive = trend?.isPositive;
+    const trendColor = isPositive ? 'var(--success)' : 'var(--error)';
+    const trendSymbol = isPositive ? '+' : '';
+
+    return `
+    <div style="padding: var(--space-6); border-radius: var(--radius-xl); box-shadow: var(--shadow-soft); transition: box-shadow 0.3s ease; ${variants[variant] || variants.default}"
+         onmouseover="this.style.boxShadow='var(--shadow-medium)'"
+         onmouseout="this.style.boxShadow='var(--shadow-soft)'">
+        <div style="display: flex; align-items: flex-start; justify-content: space-between;">
+            <div style="flex: 1;">
+                <p style="font-size: 0.875rem; font-weight: 500; color: var(--text-secondary); margin: 0;">${title}</p>
+                <p style="font-size: 1.875rem; font-weight: 700; color: var(--text-primary); margin-top: 0.5rem; margin-bottom: 0px;">${value}</p>
+                ${subtitle ? `<p style="font-size: 0.875rem; color: var(--text-secondary); margin-top: 4px;">${subtitle}</p>` : ''}
+                
+                ${trend ? `
+                    <div style="display: flex; align-items: center; gap: 4px; margin-top: 8px;">
+                        <span style="font-size: 0.875rem; font-weight: 500; color: ${trendColor};">
+                            ${trendSymbol}${trend.value}%
+                        </span>
+                        <span style="font-size: 0.75rem; color: var(--text-secondary);">vs last month</span>
+                    </div>
+                ` : ''}
+            </div>
+            <div style="padding: 12px; border-radius: 12px; display: flex; align-items: center; justify-content: center; width: 48px; height: 48px; ${iconVariants[variant] || iconVariants.default}">
+                <div style="width: 24px; height: 24px;">${getIconSvg(icon)}</div>
+            </div>
+        </div>
+    </div>
+    `;
 }
 
 // Close lightbox

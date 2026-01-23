@@ -893,3 +893,110 @@
         grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
     }
 }
+
+/* ============================================
+   NEW: Button Variants (React Port)
+   ============================================ */
+
+.btn-outline {
+    background: transparent;
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+    transition: all var(--transition-fast);
+}
+
+.btn-outline:hover {
+    background: var(--secondary);
+    border-color: var(--ring);
+}
+
+.btn-hero {
+    background: var(--gradient-hero);
+    color: var(--primary-foreground);
+    box-shadow: var(--shadow-medium);
+}
+
+.btn-hero:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-elevated);
+}
+
+.btn-subtle {
+    background: var(--secondary);
+    color: var(--text-primary);
+}
+
+.btn-subtle:hover {
+    background: var(--muted);
+}
+
+/* ============================================
+   NEW: Selfie Uploader Component
+   ============================================ */
+
+.selfie-uploader-wrapper {
+    max-width: 28rem;
+    margin: 0 auto;
+}
+
+/* ============================================
+   NEW: Watermark Overlay Utility
+   ============================================ */
+
+.watermark-overlay {
+    position: relative;
+}
+
+.watermark-overlay::after {
+    content: 'NexWave';
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: rgba(0, 0, 0, 0.15);
+    text-shadow: 0 1px 2px rgba(255, 255, 255, 0.5);
+    pointer-events: none;
+    letter-spacing: 0.1em;
+}
+
+/* ============================================
+   FIX: Navbar for Light Theme
+   ============================================ */
+
+.navbar {
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+}
+
+.brand-text {
+    background: var(--gradient-hero);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.nav-user {
+    background: var(--card);
+    border: 1px solid var(--border);
+}
+
+.nav-user:hover {
+    background: var(--secondary);
+    border-color: var(--primary);
+}
+
+.nav-avatar {
+    background: var(--gradient-hero);
+    color: white;
+}
+
+/* ============================================
+   FIX: Photo Card Hover Effect
+   ============================================ */
+.photo-card:hover .photo-card-hover-overlay {
+    opacity: 1;
+}

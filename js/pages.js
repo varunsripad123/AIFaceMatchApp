@@ -364,11 +364,7 @@ function renderAttendeeEventPage(eventId) {
                     <p class="page-subtitle">Upload a clear selfie to find your photos</p>
                 </div>
                 
-                ${renderUploadZone('selfie-upload', {
-            multiple: false,
-            maxFiles: 1,
-            hint: 'Tap to take a selfie or choose from gallery 📸'
-        })}
+                ${renderSelfieUploader('selfie-upload')}
                 
                 <button class="btn btn-primary btn-lg" onclick="startFaceMatching('${eventId}')" style="width: 100%; margin-top: 24px;">
                     <span class="btn-icon">🔍</span>
@@ -376,6 +372,11 @@ function renderAttendeeEventPage(eventId) {
                 </button>
             </div>
         `;
+
+        // Track visitor for analytics
+        if (typeof trackVisitor === 'function') {
+            trackVisitor(eventId);
+        }
     }, 100);
 
     return `
@@ -432,10 +433,26 @@ document.addEventListener('filesChanged', (e) => {
 
 // Start face matching process
 async function startFaceMatching(eventId) {
-    const selfies = getUploadedFiles('selfie-upload');
+    let selfies = [];
+
+    // Check new Selfie Uploader first (hidden input)
+    const dataUrlInput = document.getElementById('selfie-upload-data-url');
+    if (dataUrlInput && dataUrlInput.value) {
+        try {
+            const res = await fetch(dataUrlInput.value);
+            const blob = await res.blob();
+            const file = new File([blob], "selfie.jpg", { type: "image/jpeg" });
+            selfies = [file];
+        } catch (e) {
+            console.error("Error converting selfie data URL:", e);
+        }
+    } else {
+        // Fallback to legacy
+        selfies = getUploadedFiles('selfie-upload');
+    }
 
     if (selfies.length === 0) {
-        showToast('Please upload at least one selfie', 'warning');
+        showToast('Please take a selfie or upload a photo', 'warning');
         return;
     }
 
@@ -464,6 +481,11 @@ async function startFaceMatching(eventId) {
         await sleep(500);
 
         hideProgressModal();
+
+        // Track matches in analytics
+        if (matches.length > 0 && typeof trackMatch === 'function') {
+            trackMatch(eventId, matches.length);
+        }
 
         // Store matches and navigate to results
         window.matchedPhotos = matches;
@@ -567,6 +589,7 @@ function renderPhotographerPage() {
     setTimeout(async () => {
         const statsContainer = document.querySelector('.dashboard-stats');
         const eventsContainer = document.querySelector('.event-management');
+        const chartContainer = document.querySelector('.dashboard-chart');
 
         if (!statsContainer || !eventsContainer) return;
 
@@ -576,24 +599,36 @@ function renderPhotographerPage() {
             getEventsByPhotographerAsync(currentUser.id)
         ]);
 
-        // Render stats
+        // Get analytics data
+        const analyticsData = getPhotographerAnalytics(events);
+
+        // Render enhanced stats with the new renderStatCard component
         statsContainer.innerHTML = `
-            <div class="stat-card">
-                <div class="stat-card-icon">📅</div>
-                <div class="stat-card-value">${stats.totalEvents}</div>
-                <div class="stat-card-label">Total Events</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-card-icon">📷</div>
-                <div class="stat-card-value">${stats.totalPhotos}</div>
-                <div class="stat-card-label">Total Photos</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-card-icon">🤖</div>
-                <div class="stat-card-value">${stats.processingRate}%</div>
-                <div class="stat-card-label">Processed</div>
-            </div>
+            ${renderStatCard('Total Events', stats.totalEvents, {
+            icon: Icons.Camera,
+            variant: 'default',
+            subtitle: events.length > 0 ? `Latest: ${events[0]?.name?.substring(0, 20) || 'N/A'}...` : ''
+        })}
+            ${renderStatCard('Total Photos', stats.totalPhotos, {
+            icon: Icons.Upload,
+            variant: 'primary',
+            subtitle: `${stats.processingRate}% processed`
+        })}
+            ${renderStatCard('Face Matches', analyticsData.totalMatches, {
+            icon: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 1 0-16 0"/></svg>`,
+            variant: 'accent'
+        })}
+            ${renderStatCard('Downloads', analyticsData.totalDownloads, {
+            icon: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>`,
+            variant: 'default',
+            subtitle: `${analyticsData.totalVisitors} unique visitors`
+        })}
         `;
+
+        // Render weekly chart
+        if (chartContainer) {
+            chartContainer.innerHTML = renderWeeklyChart(analyticsData.weeklyStats);
+        }
 
         // Render events
         eventsContainer.innerHTML = `
@@ -602,7 +637,9 @@ function renderPhotographerPage() {
             </div>
             ${events.length > 0 ? `
                 <div class="event-grid">
-                    ${events.map(event => `
+                    ${events.map(event => {
+            const eventAnalytics = getEventAnalytics(event.id);
+            return `
                         <div class="event-card" onclick="navigate('photographer-event', '${event.id}')">
                             <div class="event-card-image">
                                 <img src="${event.coverImage}" alt="${escapeHtml(event.name)}">
@@ -614,21 +651,26 @@ function renderPhotographerPage() {
                                     <span class="event-stat">
                                         <span class="event-stat-value">${event.photos.length}</span> photos
                                     </span>
+                                    <span class="event-stat" style="color: var(--primary);">
+                                        <span class="event-stat-value">${eventAnalytics.matches}</span> matches
+                                    </span>
+                                </div>
+                                <div style="margin-top: 8px;">
                                     <span class="badge ${event.photos.filter(p => p.processed).length === event.photos.length && event.photos.length > 0 ? 'badge-success' : 'badge-warning'}">
                                         ${event.photos.filter(p => p.processed).length}/${event.photos.length} processed
                                     </span>
                                 </div>
                             </div>
                         </div>
-                    `).join('')}
+                    `}).join('')}
                 </div>
             ` : renderEmptyState(
-            '📅',
-            'No events yet',
-            'Create your first event to start uploading photos',
-            'Create Event',
-            "navigate('photographer-create')"
-        )}
+                '📅',
+                'No events yet',
+                'Create your first event to start uploading photos',
+                'Create Event',
+                "navigate('photographer-create')"
+            )}
         `;
     }, 100);
 
@@ -646,11 +688,17 @@ function renderPhotographerPage() {
                     </button>
                 </div>
                 
-                <div class="dashboard-stats">
-                    ${Array(3).fill('<div class="stat-card is-loading"></div>').join('')}
+                <div class="dashboard-stats" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-4);">
+                    ${Array(4).fill('<div class="stat-card is-loading" style="height: 120px;"></div>').join('')}
                 </div>
                 
-                <div class="event-management">
+                <div class="dashboard-chart" style="margin-top: var(--space-6);">
+                    <div style="height: 200px; background: var(--bg-secondary); border-radius: var(--radius-xl); display: flex; align-items: center; justify-content: center;">
+                        <div class="loading-spinner"></div>
+                    </div>
+                </div>
+                
+                <div class="event-management" style="margin-top: var(--space-6);">
                     <div class="loading-spinner" style="margin: 40px auto;"></div>
                 </div>
             </div>
