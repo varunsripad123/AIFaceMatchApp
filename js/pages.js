@@ -330,8 +330,7 @@ function renderAttendeeEventPage(eventId) {
                 ${renderUploadZone('selfie-upload', {
             multiple: false,
             maxFiles: 1,
-            capture: 'user', // Force front camera on mobile
-            hint: 'Tap to take a selfie 📸'
+            hint: 'Tap to take a selfie or choose from gallery 📸'
         })}
                 
                 <button class="btn btn-primary btn-lg" onclick="startFaceMatching('${eventId}')" style="width: 100%; margin-top: 24px;">
