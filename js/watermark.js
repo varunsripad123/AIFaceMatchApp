@@ -190,9 +190,14 @@ async function downloadPhoto(imageSrc, filename, addWatermark = false) {
         downloadImage(imageData, filename);
         showToast('Download started!', 'success');
 
-        // Track download for analytics
+        // Track download for analytics (local)
         if (window.currentEventId && typeof trackDownload === 'function') {
             trackDownload(window.currentEventId, 1);
+        }
+
+        // Sync to photographer's Firestore profile
+        if (window.currentEventPhotographerId && typeof incrementPhotographerDownloads === 'function') {
+            incrementPhotographerDownloads(window.currentEventPhotographerId, 1);
         }
     } catch (error) {
         console.error('Download error:', error);
@@ -217,9 +222,14 @@ async function downloadAllPhotos(photos, eventName, addWatermark = false) {
         }
     }
 
-    // Track all downloads for analytics
+    // Track all downloads for analytics (local)
     if (window.currentEventId && typeof trackDownload === 'function') {
         trackDownload(window.currentEventId, photos.length);
+    }
+
+    // Sync to photographer's Firestore profile
+    if (window.currentEventPhotographerId && typeof incrementPhotographerDownloads === 'function') {
+        incrementPhotographerDownloads(window.currentEventPhotographerId, photos.length);
     }
 
     showToast('All downloads complete!', 'success');

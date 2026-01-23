@@ -340,3 +340,199 @@ async function migrateLocalStorageToFirebase() {
 
     console.log('✅ Migration complete!');
 }
+
+// ============================================
+// USER PROFILES COLLECTION (Firebase Auth Integration)
+// ============================================
+
+// Create user profile in Firestore after Firebase Auth signup
+async function createUserProfile(uid, userData) {
+    if (!isFirebaseReady()) await initFirebase();
+
+    const profile = {
+        uid: uid,
+        email: userData.email,
+        name: userData.name,
+        role: userData.role || 'attendee',
+        photoURL: userData.photoURL || null,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+    };
+
+    // Add role-specific data
+    if (userData.role === 'photographer') {
+        profile.photographer = {
+            totalEvents: 0,
+            totalPhotos: 0,
+            totalDownloads: 0,
+            totalRevenue: 0,
+            stripeAccountId: null
+        };
+    } else {
+        profile.attendee = {
+            eventsVisited: [],
+            photosDownloaded: 0,
+            totalSpent: 0
+        };
+    }
+
+    try {
+        await db.collection('users').doc(uid).set(profile);
+        console.log('✅ User profile created:', uid);
+        return profile;
+    } catch (error) {
+        console.error('❌ Error creating user profile:', error);
+        throw error;
+    }
+}
+
+// Get user profile by UID
+async function getUserProfile(uid) {
+    if (!isFirebaseReady()) await initFirebase();
+
+    try {
+        const doc = await db.collection('users').doc(uid).get();
+        if (doc.exists) {
+            return { uid: doc.id, ...doc.data() };
+        }
+        return null;
+    } catch (error) {
+        console.error('Error fetching user profile:', error);
+        return null;
+    }
+}
+
+// Update user profile
+async function updateUserProfile(uid, updates) {
+    if (!isFirebaseReady()) await initFirebase();
+
+    try {
+        await db.collection('users').doc(uid).update({
+            ...updates,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        console.log('✅ User profile updated:', uid);
+    } catch (error) {
+        console.error('❌ Error updating user profile:', error);
+        throw error;
+    }
+}
+
+// Update photographer stats
+async function updatePhotographerStats(uid, updates) {
+    if (!isFirebaseReady()) await initFirebase();
+
+    const updateObj = {};
+    for (const [key, value] of Object.entries(updates)) {
+        updateObj[`photographer.${key}`] = value;
+    }
+    updateObj.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
+
+    try {
+        await db.collection('users').doc(uid).update(updateObj);
+    } catch (error) {
+        console.error('Error updating photographer stats:', error);
+    }
+}
+
+// Increment photographer downloads
+async function incrementPhotographerDownloads(uid, count = 1) {
+    if (!isFirebaseReady()) await initFirebase();
+
+    try {
+        await db.collection('users').doc(uid).update({
+            'photographer.totalDownloads': firebase.firestore.FieldValue.increment(count),
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+    } catch (error) {
+        console.error('Error incrementing downloads:', error);
+    }
+}
+
+// Add photographer revenue
+async function addPhotographerRevenue(uid, amount) {
+    if (!isFirebaseReady()) await initFirebase();
+
+    try {
+        await db.collection('users').doc(uid).update({
+            'photographer.totalRevenue': firebase.firestore.FieldValue.increment(amount),
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+    } catch (error) {
+        console.error('Error adding revenue:', error);
+    }
+}
+
+// Increment photographer events count
+async function incrementPhotographerEvents(uid) {
+    if (!isFirebaseReady()) await initFirebase();
+
+    try {
+        await db.collection('users').doc(uid).update({
+            'photographer.totalEvents': firebase.firestore.FieldValue.increment(1),
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+    } catch (error) {
+        console.error('Error incrementing events:', error);
+    }
+}
+
+// Increment photographer photos count
+async function incrementPhotographerPhotos(uid, count = 1) {
+    if (!isFirebaseReady()) await initFirebase();
+
+    try {
+        await db.collection('users').doc(uid).update({
+            'photographer.totalPhotos': firebase.firestore.FieldValue.increment(count),
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+    } catch (error) {
+        console.error('Error incrementing photos:', error);
+    }
+}
+
+// Update attendee stats
+async function updateAttendeeStats(uid, updates) {
+    if (!isFirebaseReady()) await initFirebase();
+
+    const updateObj = {};
+    for (const [key, value] of Object.entries(updates)) {
+        updateObj[`attendee.${key}`] = value;
+    }
+    updateObj.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
+
+    try {
+        await db.collection('users').doc(uid).update(updateObj);
+    } catch (error) {
+        console.error('Error updating attendee stats:', error);
+    }
+}
+
+// Add event to attendee's visited list
+async function addEventToAttendee(uid, eventId) {
+    if (!isFirebaseReady()) await initFirebase();
+
+    try {
+        await db.collection('users').doc(uid).update({
+            'attendee.eventsVisited': firebase.firestore.FieldValue.arrayUnion(eventId),
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+    } catch (error) {
+        console.error('Error adding event to attendee:', error);
+    }
+}
+
+// Increment attendee downloads and spending
+async function recordAttendeePurchase(uid, photoCount, amount) {
+    if (!isFirebaseReady()) await initFirebase();
+
+    try {
+        await db.collection('users').doc(uid).update({
+            'attendee.photosDownloaded': firebase.firestore.FieldValue.increment(photoCount),
+            'attendee.totalSpent': firebase.firestore.FieldValue.increment(amount),
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+    } catch (error) {
+        console.error('Error recording attendee purchase:', error);
+    }
+}

@@ -126,6 +126,12 @@ async function createEvent(name, date, description = '', coverImage = null, acce
         try {
             const event = await createEventInCloud(eventData);
             clearEventsCache();
+
+            // Update photographer's event count in their profile
+            if (currentUser?.uid) {
+                incrementPhotographerEvents(currentUser.uid);
+            }
+
             showToast('Event created successfully!', 'success');
             return event;
         } catch (err) {
@@ -250,6 +256,12 @@ async function addPhotosToEvent(eventId, photoDataArray) {
 
         await updateEventInCloud(eventId, updates);
         clearEventsCache();
+
+        // Update photographer's photo count in their profile
+        if (currentUser?.uid) {
+            incrementPhotographerPhotos(currentUser.uid, successfulUploads.length);
+        }
+
         console.log(`✅ ${successfulUploads.length} photos added to Firebase event!`);
     } else {
         // Fallback to LocalStorage

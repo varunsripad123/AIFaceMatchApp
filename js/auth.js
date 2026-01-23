@@ -1,21 +1,61 @@
 /* ============================================
    NEXWAVE - Authentication Service
+   Firebase Authentication Integration
    ============================================ */
-
-const AUTH_STORAGE_KEY = 'nexwave_auth';
-const USERS_STORAGE_KEY = 'nexwave_users';
 
 // Auth state
 let currentUser = null;
+let currentUserProfile = null;
 let authListeners = [];
+let authInitialized = false;
 
-// Initialize auth from storage
-function initAuth() {
-    const savedAuth = storage.get(AUTH_STORAGE_KEY);
-    if (savedAuth) {
-        currentUser = savedAuth;
+// Initialize auth with Firebase Auth listener
+async function initAuth() {
+    if (authInitialized) return;
+
+    // Ensure Firebase is ready
+    if (!isFirebaseReady()) {
+        await initFirebase();
     }
-    updateNavAuth();
+
+    // Set up Firebase Auth state listener
+    firebase.auth().onAuthStateChanged(async (firebaseUser) => {
+        if (firebaseUser) {
+            // User is signed in - fetch their profile from Firestore
+            const profile = await getUserProfile(firebaseUser.uid);
+
+            if (profile) {
+                currentUser = {
+                    id: firebaseUser.uid,
+                    uid: firebaseUser.uid,
+                    email: firebaseUser.email,
+                    name: profile.name,
+                    role: profile.role,
+                    photoURL: profile.photoURL
+                };
+                currentUserProfile = profile;
+            } else {
+                // Profile doesn't exist yet (shouldn't happen normally)
+                currentUser = {
+                    id: firebaseUser.uid,
+                    uid: firebaseUser.uid,
+                    email: firebaseUser.email,
+                    name: firebaseUser.displayName || 'User',
+                    role: 'attendee'
+                };
+                currentUserProfile = null;
+            }
+        } else {
+            // User is signed out
+            currentUser = null;
+            currentUserProfile = null;
+        }
+
+        notifyAuthChange();
+    });
+
+    authInitialized = true;
+    console.log('🔐 Firebase Auth initialized');
 }
 
 // Subscribe to auth changes
@@ -37,6 +77,11 @@ function getCurrentUser() {
     return currentUser;
 }
 
+// Get current user's full profile
+function getCurrentUserProfile() {
+    return currentUserProfile;
+}
+
 // Check if user is logged in
 function isLoggedIn() {
     return currentUser !== null;
@@ -47,21 +92,8 @@ function isPhotographer() {
     return currentUser?.role === 'photographer';
 }
 
-// Get all users from storage
-function getUsers() {
-    return storage.get(USERS_STORAGE_KEY, []);
-}
-
-// Save users to storage
-function saveUsers(users) {
-    storage.set(USERS_STORAGE_KEY, users);
-}
-
-// Sign up new user
+// Sign up new user with Firebase Auth
 async function signUp(name, email, password, role = 'attendee', accessCode = '') {
-    // Simulate network delay
-    await sleep(800);
-
     // Validate inputs
     if (!name || name.trim().length < 2) {
         throw new Error('Name must be at least 2 characters');
@@ -87,101 +119,143 @@ async function signUp(name, email, password, role = 'attendee', accessCode = '')
         }
     }
 
-    // Check if email already exists
-    const users = getUsers();
-    const existingUser = users.find(u => u.email.toLowerCase() === email.toLowerCase());
-    if (existingUser) {
-        throw new Error('An account with this email already exists');
-    }
+    try {
+        // Create Firebase Auth user
+        const userCredential = await firebase.auth().createUserWithEmailAndPassword(email, password);
+        const firebaseUser = userCredential.user;
 
-    // Create new user
-    const newUser = {
-        id: generateId(),
-        name: name.trim(),
-        email: email.toLowerCase(),
-        password: password, // In production, this should be hashed
-        role: role,
-        createdAt: new Date().toISOString()
-    };
+        // Update display name
+        await firebaseUser.updateProfile({ displayName: name.trim() });
 
-    // Save user locally
-    users.push(newUser);
-    saveUsers(users);
+        // Create user profile in Firestore
+        const profile = await createUserProfile(firebaseUser.uid, {
+            email: email.toLowerCase(),
+            name: name.trim(),
+            role: role
+        });
 
-    // Save user to Cloud (Firebase)
-    if (isFirebaseReady()) {
-        try {
-            await createUserInCloud(newUser);
-        } catch (err) {
-            console.error('Failed to create user in cloud:', err);
-            // Continue with local user
+        // Set local state
+        currentUser = {
+            id: firebaseUser.uid,
+            uid: firebaseUser.uid,
+            email: firebaseUser.email,
+            name: name.trim(),
+            role: role
+        };
+        currentUserProfile = profile;
+
+        notifyAuthChange();
+        showToast('Account created successfully!', 'success');
+
+        return currentUser;
+
+    } catch (error) {
+        console.error('Signup error:', error);
+
+        // Handle specific Firebase errors
+        if (error.code === 'auth/email-already-in-use') {
+            throw new Error('An account with this email already exists');
+        } else if (error.code === 'auth/weak-password') {
+            throw new Error('Password is too weak. Please use at least 6 characters.');
+        } else if (error.code === 'auth/invalid-email') {
+            throw new Error('Please enter a valid email address');
         }
+
+        throw error;
     }
-
-    // Auto login
-    const userWithoutPassword = { ...newUser };
-    delete userWithoutPassword.password;
-
-    currentUser = userWithoutPassword;
-    storage.set(AUTH_STORAGE_KEY, currentUser);
-    notifyAuthChange();
-
-    return currentUser;
 }
 
-// Login user
+// Login user with Firebase Auth
 async function login(email, password) {
-    // Simulate network delay
-    await sleep(600);
-
     if (!email || !password) {
         throw new Error('Please enter email and password');
     }
 
-    let user = null;
+    try {
+        const userCredential = await firebase.auth().signInWithEmailAndPassword(email, password);
+        const firebaseUser = userCredential.user;
 
-    // 1. Try Cloud Login
-    if (isFirebaseReady()) {
-        try {
-            const cloudUser = await getUserByEmailFromCloud(email);
-            if (cloudUser && cloudUser.password === password) {
-                user = cloudUser;
-            }
-        } catch (err) {
-            console.error('Cloud login failed, falling back to local:', err);
+        // Fetch user profile from Firestore
+        const profile = await getUserProfile(firebaseUser.uid);
+
+        if (profile) {
+            currentUser = {
+                id: firebaseUser.uid,
+                uid: firebaseUser.uid,
+                email: firebaseUser.email,
+                name: profile.name,
+                role: profile.role,
+                photoURL: profile.photoURL
+            };
+            currentUserProfile = profile;
+        } else {
+            // Fallback if profile doesn't exist
+            currentUser = {
+                id: firebaseUser.uid,
+                uid: firebaseUser.uid,
+                email: firebaseUser.email,
+                name: firebaseUser.displayName || 'User',
+                role: 'attendee'
+            };
+            currentUserProfile = null;
         }
-    }
 
-    // 2. Try Local Login (Fallback)
-    if (!user) {
-        const users = getUsers();
-        user = users.find(u =>
-            u.email.toLowerCase() === email.toLowerCase() &&
-            u.password === password
-        );
-    }
+        notifyAuthChange();
+        showToast(`Welcome back, ${currentUser.name}!`, 'success');
 
-    if (!user) {
+        return currentUser;
+
+    } catch (error) {
+        console.error('Login error:', error);
+
+        // Handle specific Firebase errors
+        if (error.code === 'auth/user-not-found') {
+            throw new Error('No account found with this email');
+        } else if (error.code === 'auth/wrong-password') {
+            throw new Error('Incorrect password');
+        } else if (error.code === 'auth/invalid-email') {
+            throw new Error('Please enter a valid email address');
+        } else if (error.code === 'auth/too-many-requests') {
+            throw new Error('Too many failed attempts. Please try again later.');
+        }
+
         throw new Error('Invalid email or password');
     }
-
-    // Set current user (without password)
-    const userWithoutPassword = { ...user };
-    delete userWithoutPassword.password;
-
-    currentUser = userWithoutPassword;
-    storage.set(AUTH_STORAGE_KEY, currentUser);
-    notifyAuthChange();
-
-    return currentUser;
 }
 
 // Logout user
-function logout() {
-    currentUser = null;
-    storage.remove(AUTH_STORAGE_KEY);
-    notifyAuthChange();
-    navigate('home');
+async function logout() {
+    try {
+        await firebase.auth().signOut();
+        currentUser = null;
+        currentUserProfile = null;
+        notifyAuthChange();
+        navigate('home');
+        showToast('Logged out successfully', 'info');
+    } catch (error) {
+        console.error('Logout error:', error);
+        showToast('Error logging out', 'error');
+    }
+}
+
+// Send password reset email
+async function resetPassword(email) {
+    if (!isValidEmail(email)) {
+        throw new Error('Please enter a valid email address');
+    }
+
+    try {
+        await firebase.auth().sendPasswordResetEmail(email);
+        showToast('Password reset email sent!', 'success');
+    } catch (error) {
+        console.error('Password reset error:', error);
+
+        if (error.code === 'auth/user-not-found') {
+            throw new Error('No account found with this email');
+        }
+
+        throw new Error('Failed to send reset email');
+    }
 }
 
 // Update nav based on auth state
@@ -239,4 +313,13 @@ function requirePhotographer() {
         return false;
     }
     return true;
+}
+
+// Legacy functions kept for backward compatibility
+function getUsers() {
+    return storage.get('nexwave_users', []);
+}
+
+function saveUsers(users) {
+    storage.set('nexwave_users', users);
 }

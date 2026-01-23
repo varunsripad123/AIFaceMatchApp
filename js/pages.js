@@ -481,9 +481,16 @@ async function startFaceMatching(eventId) {
             trackMatch(eventId, matches.length);
         }
 
-        // Store matches and navigate to results
+        // Store matches and event context for downloads
         window.matchedPhotos = matches;
         window.currentEventId = eventId;
+
+        // Store photographer ID for download tracking
+        const event = await getEventByIdAsync(eventId);
+        if (event) {
+            window.currentEventPhotographerId = event.photographerId;
+        }
+
         navigate('attendee-results', eventId);
 
     } catch (error) {
@@ -587,14 +594,20 @@ function renderPhotographerPage() {
 
         if (!statsContainer || !eventsContainer) return;
 
-        // Fetch stats and events in parallel
-        const [stats, events] = await Promise.all([
-            getPhotographerStatsAsync(currentUser.id),
-            getEventsByPhotographerAsync(currentUser.id)
+        // Fetch stats, events, and user profile in parallel
+        const [stats, events, profile] = await Promise.all([
+            getPhotographerStatsAsync(currentUser.id || currentUser.uid),
+            getEventsByPhotographerAsync(currentUser.id || currentUser.uid),
+            getUserProfile(currentUser.uid) // Fetch Firestore profile
         ]);
 
-        // Get analytics data
+        // Get local analytics data
         const analyticsData = getPhotographerAnalytics(events);
+
+        // Use Firestore profile stats if available (more accurate), fallback to local
+        const profileStats = profile?.photographer || {};
+        const totalDownloads = profileStats.totalDownloads || analyticsData.totalDownloads;
+        const totalRevenue = profileStats.totalRevenue || 0;
 
         // Render enhanced stats with the new renderStatCard component
         statsContainer.innerHTML = `
@@ -612,10 +625,10 @@ function renderPhotographerPage() {
             icon: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 1 0-16 0"/></svg>`,
             variant: 'accent'
         })}
-            ${renderStatCard('Downloads', analyticsData.totalDownloads, {
+            ${renderStatCard('Downloads', totalDownloads, {
             icon: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>`,
             variant: 'default',
-            subtitle: `${analyticsData.totalVisitors} unique visitors`
+            subtitle: totalRevenue > 0 ? `$${totalRevenue.toFixed(2)} earned` : `${analyticsData.totalVisitors} visitors`
         })}
         `;
 
