@@ -485,8 +485,7 @@ async function startFaceMatching(eventId) {
         window.matchedPhotos = matches;
         window.currentEventId = eventId;
 
-        // Store photographer ID for download tracking
-        const event = await getEventByIdAsync(eventId);
+        // Store photographer ID for download tracking (reuse event from line 454)
         if (event) {
             window.currentEventPhotographerId = event.photographerId;
         }
