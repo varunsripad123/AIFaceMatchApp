@@ -74,6 +74,29 @@ function renderHomePage() {
     `;
 }
 
+// Handle forgot password form
+async function handleForgotPassword(event) {
+    event.preventDefault();
+
+    const email = document.getElementById('reset-email').value;
+    const btn = document.getElementById('reset-btn');
+
+    btn.classList.add('btn-loading');
+    btn.disabled = true;
+
+    try {
+        await resetPassword(email);
+        // Success toast is shown in auth.js, but we can add another confirmation
+        showToast('If an account exists for that email, a reset link has been sent.', 'success');
+        navigate('login');
+    } catch (error) {
+        showToast(error.message, 'error');
+    } finally {
+        btn.classList.remove('btn-loading');
+        btn.disabled = false;
+    }
+}
+
 // Cleanup Three.js when navigating away from home
 function cleanupHomePage() {
     if (typeof destroyThreeScene === 'function') {
@@ -104,9 +127,12 @@ function renderLoginPage() {
                             <label class="form-label" for="login-password">Password</label>
                             <input type="password" id="login-password" class="form-input" 
                                    placeholder="Enter your password" required>
+                            <div class="text-right mt-2">
+                                <a href="#" onclick="event.preventDefault(); navigate('forgot-password')" class="text-sm text-secondary">Forgot Password?</a>
+                            </div>
                         </div>
                         
-                        <button type="submit" class="btn btn-primary btn-lg" style="width: 100%" id="login-btn">
+                        <button type="submit" class="btn btn-primary btn-lg w-full mt-4" id="login-btn">
                             Sign In
                         </button>
                     </form>
@@ -142,6 +168,40 @@ async function handleLogin(event) {
         btn.classList.remove('btn-loading');
         btn.disabled = false;
     }
+}
+
+// Render Forgot Password Page
+function renderForgotPasswordPage() {
+    return `
+        <div class="page-auth">
+            <div class="auth-container">
+                <div class="auth-header">
+                    <div class="auth-logo">✨</div>
+                    <h1 class="auth-title">Reset Password</h1>
+                    <p class="auth-subtitle">Enter your email to receive a reset link</p>
+                </div>
+
+                <div class="auth-card">
+                    <form class="auth-form" onsubmit="handleForgotPassword(event)">
+                        <div class="form-group">
+                            <label class="form-label" for="reset-email">Email</label>
+                            <input type="email" id="reset-email" class="form-input"
+                                   placeholder="Enter your email" required>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary btn-lg w-full" id="reset-btn">
+                            Send Reset Link
+                        </button>
+                    </form>
+
+                    <div class="auth-footer">
+                        Remember your password?
+                        <a href="#" onclick="navigate('login')">Sign in</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
 }
 
 // Render Signup Page

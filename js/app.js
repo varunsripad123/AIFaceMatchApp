@@ -14,6 +14,7 @@ const routes = {
     'home': { render: renderHomePage, title: 'Nexwave - AI Face Match' },
     'login': { render: renderLoginPage, title: 'Login - Nexwave' },
     'signup': { render: renderSignupPage, title: 'Sign Up - Nexwave' },
+    'forgot-password': { render: renderForgotPasswordPage, title: 'Reset Password - Nexwave' },
     'attendee': { render: renderAttendeePage, title: 'Find Photos - Nexwave' },
     'attendee-event': { render: renderAttendeeEventPage, title: 'Upload Selfie - Nexwave', paramRequired: true },
     'attendee-results': { render: renderAttendeeResultsPage, title: 'Your Photos - Nexwave', paramRequired: true },

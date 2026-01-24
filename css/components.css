@@ -1000,3 +1000,22 @@
 .photo-card:hover .photo-card-hover-overlay {
     opacity: 1;
 }
+
+/* ============================================
+   NEW: Utility Classes
+   ============================================ */
+.w-full {
+    width: 100%;
+}
+
+.mt-2 {
+    margin-top: var(--space-2);
+}
+
+.mt-4 {
+    margin-top: var(--space-4);
+}
+
+.text-right {
+    text-align: right;
+}
