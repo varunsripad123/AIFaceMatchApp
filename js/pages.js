@@ -168,6 +168,13 @@ function renderSignupPage() {
                             <input type="email" id="signup-email" class="form-input" 
                                    placeholder="Enter your email" required>
                         </div>
+
+                        <div class="form-group">
+                            <label class="form-label" for="signup-phone">Phone Number</label>
+                            <input type="tel" id="signup-phone" class="form-input" 
+                                   placeholder="+1 (555) 000-0000" required>
+                            <p class="form-help">Used for photo delivery via text.</p>
+                        </div>
                         
                         <div class="form-group">
                             <label class="form-label" for="signup-password">Password</label>
@@ -240,6 +247,7 @@ async function handleSignup(event) {
 
     const name = document.getElementById('signup-name').value;
     const email = document.getElementById('signup-email').value;
+    const phone = document.getElementById('signup-phone').value;
     const password = document.getElementById('signup-password').value;
     const role = document.getElementById('signup-role').value;
     const accessCode = document.getElementById('signup-code')?.value || '';
@@ -249,7 +257,7 @@ async function handleSignup(event) {
     btn.disabled = true;
 
     try {
-        const user = await signUp(name, email, password, role, accessCode);
+        const user = await signUp(name, email, password, role, accessCode, phone);
         showToast(`Welcome to Nexwave, ${user.name}!`, 'success');
         navigate(user.role === 'photographer' ? 'photographer' : 'attendee');
     } catch (error) {
@@ -366,7 +374,16 @@ function renderAttendeeEventPage(eventId) {
                 
                 ${renderSelfieUploader('selfie-upload')}
                 
-                <button class="btn btn-primary btn-lg" onclick="startFaceMatching('${eventId}')" style="width: 100%; margin-top: 24px;">
+                <div class="form-group" style="margin-top: 24px;">
+                    <label class="form-label" for="delivery-phone">Delivery Phone Number</label>
+                    <input type="tel" id="delivery-phone" class="form-input" 
+                           placeholder="+1 (555) 000-0000" 
+                           value="${currentUser?.phone || ''}"
+                           required>
+                    <p class="form-help">We'll text you a link to your high-res photos after payment.</p>
+                </div>
+                
+                <button class="btn btn-primary btn-lg" onclick="startFaceMatching('${eventId}')" style="width: 100%; margin-top: 16px;">
                     <span class="btn-icon">🔍</span>
                     Find My Photos
                 </button>
@@ -451,7 +468,20 @@ async function startFaceMatching(eventId) {
         return;
     }
 
+    // Capture and validate phone number
+    const phoneInput = document.getElementById('delivery-phone');
+    const phoneNumber = phoneInput?.value || '';
+    if (!phoneNumber || phoneNumber.trim().length < 10) {
+        showToast('Please enter a valid phone number for photo delivery', 'warning');
+        phoneInput?.focus();
+        return;
+    }
+
+    // Store for payment flow
+    window.currentDeliveryPhone = phoneNumber.trim();
+
     const event = await getEventByIdAsync(eventId);
+    window.currentEventName = event?.name || 'NexWave Event';
 
     showProgressModal('Finding Your Photos', [
         'Loading AI models...',

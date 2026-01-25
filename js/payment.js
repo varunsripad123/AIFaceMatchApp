@@ -169,9 +169,19 @@ async function processPayment() {
     await sleep(2000);
 
     // For MVP, we'll simulate successful payment
-    // In production, this would integrate with Stripe
+    const phone = window.currentDeliveryPhone || 'your phone';
+    showToast(`Payment successful! Photos sent to ${phone} and starting download...`, 'success');
 
-    showToast('Payment simulation successful! Downloading your photos...', 'success');
+    // Record purchase analytics if attendee profile exists
+    if (isLoggedIn() && !isPhotographer()) {
+        const total = calculateTotal(currentPaymentSession.photos, currentPaymentSession.selectedOption);
+        await recordAttendeePurchase(currentUser.uid, currentPaymentSession.photos.length, total);
+
+        // Also add revenue to photographer
+        if (window.currentEventPhotographerId) {
+            await addPhotographerRevenue(window.currentEventPhotographerId, total);
+        }
+    }
 
     // Close modal and trigger download
     closePaymentModal();

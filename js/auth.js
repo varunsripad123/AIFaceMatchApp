@@ -39,6 +39,7 @@ async function initAuth() {
                     email: firebaseUser.email,
                     name: profile.name,
                     role: profile.role,
+                    phone: profile.phone,
                     photoURL: profile.photoURL
                 };
                 currentUserProfile = profile;
@@ -113,7 +114,7 @@ function isPhotographer() {
 }
 
 // Sign up new user with Firebase Auth
-async function signUp(name, email, password, role = 'attendee', accessCode = '') {
+async function signUp(name, email, password, role = 'attendee', accessCode = '', phone = '') {
     // Validate inputs
     if (!name || name.trim().length < 2) {
         throw new Error('Name must be at least 2 characters');
@@ -151,7 +152,8 @@ async function signUp(name, email, password, role = 'attendee', accessCode = '')
         const profile = await createUserProfile(firebaseUser.uid, {
             email: email.toLowerCase(),
             name: name.trim(),
-            role: role
+            role: role,
+            phone: phone.trim()
         });
 
         // Set local state
@@ -160,7 +162,8 @@ async function signUp(name, email, password, role = 'attendee', accessCode = '')
             uid: firebaseUser.uid,
             email: firebaseUser.email,
             name: name.trim(),
-            role: role
+            role: role,
+            phone: phone.trim()
         };
         currentUserProfile = profile;
 
