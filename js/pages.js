@@ -504,8 +504,6 @@ async function startFaceMatching(eventId) {
         updateProgressStep(3, true);
         await sleep(500);
 
-        hideProgressModal();
-
         // Track matches in analytics
         if (matches.length > 0 && typeof trackMatch === 'function') {
             trackMatch(eventId, matches.length);
@@ -523,7 +521,6 @@ async function startFaceMatching(eventId) {
         navigate('attendee-results', eventId);
 
     } catch (error) {
-        hideProgressModal();
         console.error('Face matching error:', error);
 
         if (error.message.includes('No faces detected')) {
@@ -533,6 +530,8 @@ async function startFaceMatching(eventId) {
         } else {
             showToast('Something went wrong. Please try again.', 'error');
         }
+    } finally {
+        hideProgressModal();
     }
 }
 
@@ -971,7 +970,6 @@ async function handlePhotoUpload(eventId) {
         await sleep(500);
         updateProgressStep(3, true);
 
-        hideProgressModal();
         clearUploadedFiles('event-photos-upload');
         showToast(`${uploadedPhotos.length} photos uploaded and processed!`, 'success');
 
@@ -979,9 +977,10 @@ async function handlePhotoUpload(eventId) {
         navigate('photographer-event', eventId);
 
     } catch (error) {
-        hideProgressModal();
         console.error('Upload error:', error);
         showToast(error.message || 'Error uploading photos. Please try again.', 'error');
+    } finally {
+        hideProgressModal();
     }
 }
 
@@ -1006,16 +1005,16 @@ async function processRemainingPhotos(eventId) {
         await sleep(500);
         updateProgressStep(2, true);
 
-        hideProgressModal();
         showToast(`Processed ${result.processed} photos!`, 'success');
 
         // Refresh page
         navigate('photographer-event', eventId);
 
     } catch (error) {
-        hideProgressModal();
         console.error('Processing error:', error);
         showToast('Error processing photos. Please try again.', 'error');
+    } finally {
+        hideProgressModal();
     }
 }
 
