@@ -349,7 +349,7 @@ function renderAttendeeEventPage(eventId) {
                                style="font-size: 2rem; text-align: center; letter-spacing: 1rem;">
                     </div>
                     
-                    <button class="btn btn-primary btn-lg" onclick="verifyEventCode('${eventId}')" style="width: 100%; max-width: 300px; margin: 24px auto 0; display: block;">
+                    <button class="btn btn-primary btn-lg" id="verify-code-btn" onclick="verifyEventCode('${eventId}')" style="width: 100%; max-width: 300px; margin: 24px auto 0; display: block;">
                         🔓 Unlock Event
                     </button>
                     
@@ -412,29 +412,40 @@ function renderAttendeeEventPage(eventId) {
 async function verifyEventCode(eventId) {
     const codeInput = document.getElementById('event-access-code');
     const enteredCode = codeInput?.value || '';
+    const btn = document.getElementById('verify-code-btn');
 
     if (!/^[0-9]{4}$/.test(enteredCode)) {
         showToast('Please enter a 4-digit code', 'warning');
         return;
     }
 
-    const event = await getEventByIdAsync(eventId);
+    btn.classList.add('btn-loading');
+    btn.disabled = true;
 
-    if (!event) {
-        showToast('Event not found', 'error');
-        return;
-    }
+    try {
+        const event = await getEventByIdAsync(eventId);
 
-    if (enteredCode === event.accessCode) {
-        // Store verified code in sessionStorage
-        sessionStorage.setItem(`event_code_${eventId}`, enteredCode);
-        showToast('Access granted! 🎉', 'success');
-        // Reload the page to show selfie upload
-        navigate('attendee-event', eventId);
-    } else {
-        showToast('Incorrect code. Please try again.', 'error');
-        codeInput.value = '';
-        codeInput.focus();
+        if (!event) {
+            showToast('Event not found', 'error');
+            return;
+        }
+
+        if (enteredCode === event.accessCode) {
+            // Store verified code in sessionStorage
+            sessionStorage.setItem(`event_code_${eventId}`, enteredCode);
+            showToast('Access granted! 🎉', 'success');
+            // Reload the page to show selfie upload
+            navigate('attendee-event', eventId);
+        } else {
+            showToast('Incorrect code. Please try again.', 'error');
+            codeInput.value = '';
+            codeInput.focus();
+        }
+    } catch (error) {
+        showToast('An error occurred. Please try again.', 'error');
+    } finally {
+        btn.classList.remove('btn-loading');
+        btn.disabled = false;
     }
 }
 
