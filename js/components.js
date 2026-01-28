@@ -109,6 +109,11 @@ const Icons = {
     X: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>`
 };
 
+const ButtonContent = {
+    Camera: `<span style="width: 20px;">${Icons.Camera}</span> Camera`,
+    Upload: `<span style="width: 20px;">${Icons.Upload}</span> Upload`
+};
+
 function renderSelfieUploader(id) {
     // Determine content based on state (simplified for initial render, dynamic updates handled by JS)
     // We render container and let init functions handle the state logic
@@ -210,12 +215,28 @@ function renderSelfieUploader(id) {
 
 // Logic for Selfie Camera
 async function startSelfieCamera(id) {
+    const cameraButton = document.querySelector(`#${id}-select .btn-primary`);
+    const originalButtonContent = ButtonContent.Camera;
+
+    const restoreCameraButton = () => {
+        if (cameraButton) {
+            cameraButton.disabled = false;
+            cameraButton.innerHTML = originalButtonContent;
+        }
+    };
+
+    if (cameraButton) {
+        cameraButton.disabled = true;
+        cameraButton.innerHTML = `<span class="spinner"></span> Starting...`;
+    }
+
     // Check if camera is supported
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         showToast("Camera not supported on this device. Please upload a photo.", "warning");
         // Auto-trigger file upload
         const fileInput = document.querySelector(`#${id}-select input[type="file"]`);
         if (fileInput) fileInput.click();
+        restoreCameraButton();
         return;
     }
 
@@ -253,6 +274,7 @@ async function startSelfieCamera(id) {
         }
 
         showToast(message, "warning");
+        restoreCameraButton();
 
         // Auto-trigger file upload as fallback
         const fileInput = document.querySelector(`#${id}-select input[type="file"]`);
@@ -303,8 +325,16 @@ function captureSelfie(id) {
 }
 
 function handleSelfieFileSelect(event, id) {
+    const uploadButton = document.querySelector(`#${id}-select .btn-outline`);
+    const originalButtonContent = ButtonContent.Upload;
+
     const file = event.target.files?.[0];
     if (file) {
+        if (uploadButton) {
+            uploadButton.disabled = true;
+            uploadButton.innerHTML = `<span class="spinner"></span> Uploading...`;
+        }
+
         const reader = new FileReader();
         reader.onload = (e) => {
             const imageData = e.target.result;
@@ -317,6 +347,11 @@ function handleSelfieFileSelect(event, id) {
             document.getElementById(`${id}-select`).style.display = 'none';
             document.getElementById(`${id}-camera`).style.display = 'none';
             document.getElementById(`${id}-preview-mode`).style.display = 'block';
+
+            if (uploadButton) {
+                uploadButton.disabled = false;
+                uploadButton.innerHTML = originalButtonContent;
+            }
         };
         reader.readAsDataURL(file);
     }
@@ -330,6 +365,13 @@ function resetSelfie(id) {
     document.getElementById(`${id}-select`).style.display = 'block';
     document.getElementById(`${id}-camera`).style.display = 'none';
     document.getElementById(`${id}-preview-mode`).style.display = 'none';
+
+    // Restore camera button state, as this function is used for cancellation
+    const cameraButton = document.querySelector(`#${id}-select .btn-primary`);
+    if (cameraButton) {
+        cameraButton.disabled = false;
+        cameraButton.innerHTML = ButtonContent.Camera;
+    }
 }
 
 function handleDragOver(event) {

@@ -1,0 +1,5 @@
+# Log files
+*.log
+
+# Verification artifacts
+/home/jules/verification
