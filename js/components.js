@@ -132,7 +132,7 @@ function renderSelfieUploader(id) {
                 </div>
 
                 <div class="grid grid-cols-2 gap-3" style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
-                    <button class="btn btn-primary btn-lg gap-2" onclick="startSelfieCamera('${id}')" style="display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
+                    <button class="btn btn-primary btn-lg gap-2" onclick="startSelfieCamera('${id}', this)" style="display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
                         <span style="width: 20px;">${Icons.Camera}</span>
                         Camera
                     </button>
@@ -209,7 +209,7 @@ function renderSelfieUploader(id) {
 }
 
 // Logic for Selfie Camera
-async function startSelfieCamera(id) {
+async function startSelfieCamera(id, btn) {
     // Check if camera is supported
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         showToast("Camera not supported on this device. Please upload a photo.", "warning");
@@ -218,7 +218,10 @@ async function startSelfieCamera(id) {
         if (fileInput) fileInput.click();
         return;
     }
-
+    if (btn) {
+        btn.classList.add('btn-loading');
+        btn.disabled = true;
+    }
     try {
         const stream = await navigator.mediaDevices.getUserMedia({
             video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } }
@@ -257,6 +260,11 @@ async function startSelfieCamera(id) {
         // Auto-trigger file upload as fallback
         const fileInput = document.querySelector(`#${id}-select input[type="file"]`);
         if (fileInput) fileInput.click();
+    } finally {
+        if (btn) {
+            btn.classList.remove('btn-loading');
+            btn.disabled = false;
+        }
     }
 }
 
