@@ -190,6 +190,7 @@ function renderSelfieUploader(id) {
                     />
                     <button
                         onclick="resetSelfie('${id}')"
+                        aria-label="Reset selfie"
                         style="position: absolute; top: 12px; right: 12px; padding: 8px; border-radius: 50%; background: rgba(255,255,255,0.9); border: none; box-shadow: var(--shadow-soft); cursor: pointer; color: var(--text-primary); display: flex; align-items: center; justify-content: center;"
                     >
                         <span style="width: 20px; height: 20px;">${Icons.X}</span>
