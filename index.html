@@ -22,8 +22,8 @@
     <div id="app">
         <!-- Navigation -->
         <nav class="navbar" id="navbar">
-            <div class="nav-brand" onclick="navigate('home')">
-                <span class="brand-icon">✨</span>
+            <div class="nav-brand" onclick="navigate('home')" onkeydown="if(event.key === 'Enter' || event.key === ' ') { navigate('home'); event.preventDefault(); }" aria-label="Nexwave Home" role="link" tabindex="0">
+                <span class="brand-icon" aria-hidden="true">✨</span>
                 <span class="brand-text">Nexwave</span>
             </div>
             <div class="nav-links" id="nav-links">

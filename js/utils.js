@@ -191,11 +191,11 @@ function showToast(message, type = 'info', duration = 4000) {
     });
 
     toast.innerHTML = `
-        <span class="toast-icon">${icons[type]}</span>
+        <span class="toast-icon" aria-hidden="true">${icons[type]}</span>
         <div class="toast-content">
             <div class="toast-message">${escapeHtml(message)}</div>
         </div>
-        <span class="toast-close" onclick="this.parentElement.remove()">✕</span>
+        <span class="toast-close" onclick="this.parentElement.remove()" onkeydown="if(event.key === 'Enter' || event.key === ' ') { this.parentElement.remove(); event.preventDefault(); }" aria-label="Close notification" role="button" tabindex="0">✕</span>
     `;
 
     container.appendChild(toast);

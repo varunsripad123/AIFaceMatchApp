@@ -190,6 +190,7 @@ function renderSelfieUploader(id) {
                     />
                     <button
                         onclick="resetSelfie('${id}')"
+                        aria-label="Remove photo"
                         style="position: absolute; top: 12px; right: 12px; padding: 8px; border-radius: 50%; background: rgba(255,255,255,0.9); border: none; box-shadow: var(--shadow-soft); cursor: pointer; color: var(--text-primary); display: flex; align-items: center; justify-content: center;"
                     >
                         <span style="width: 20px; height: 20px;">${Icons.X}</span>
@@ -449,7 +450,7 @@ function renderUploadPreviews(zoneId) {
     previewContainer.innerHTML = files.map(file => `
         <div class="upload-preview-item" id="preview-${file.id}">
             <img src="${file.data}" alt="${escapeHtml(file.name)}">
-            <button class="upload-preview-remove" onclick="removeUploadedFile('${zoneId}', '${file.id}')">✕</button>
+            <button class="upload-preview-remove" onclick="removeUploadedFile('${zoneId}', '${file.id}')" aria-label="Remove photo">✕</button>
         </div>
     `).join('');
 }
@@ -519,7 +520,7 @@ function renderPhotoGallery(photos, options = {}) {
 function renderEmptyState(icon, title, text, buttonText = '', buttonAction = '') {
     return `
         <div class="empty-state">
-            <div class="empty-state-icon">${icon}</div>
+            <div class="empty-state-icon" aria-hidden="true">${icon}</div>
             <h3 class="empty-state-title">${escapeHtml(title)}</h3>
             <p class="empty-state-text">${escapeHtml(text)}</p>
             ${buttonText ? `
@@ -535,7 +536,7 @@ function renderEmptyState(icon, title, text, buttonText = '', buttonAction = '')
 function renderNoMatchFound(eventName, onRetry) {
     return `
         <div class="empty-state">
-            <div class="empty-state-icon">😔</div>
+            <div class="empty-state-icon" aria-hidden="true">😔</div>
             <h3 class="empty-state-title">No matches found</h3>
             <p class="empty-state-text">
                 We couldn't find any photos matching your selfie in "${escapeHtml(eventName)}". 
@@ -606,10 +607,10 @@ function renderLightbox() {
     }
 
     lightbox.innerHTML = `
-        <button class="lightbox-close" onclick="closeLightbox()">✕</button>
+        <button class="lightbox-close" onclick="closeLightbox()" aria-label="Close lightbox">✕</button>
         ${lightboxState.photos.length > 1 ? `
-            <button class="lightbox-nav lightbox-prev" onclick="lightboxPrev()">‹</button>
-            <button class="lightbox-nav lightbox-next" onclick="lightboxNext()">›</button>
+            <button class="lightbox-nav lightbox-prev" onclick="lightboxPrev()" aria-label="Previous photo">‹</button>
+            <button class="lightbox-nav lightbox-next" onclick="lightboxNext()" aria-label="Next photo">›</button>
         ` : ''}
         <div class="lightbox-content">
             <img class="lightbox-image" src="${photo.data}" alt="Photo">
@@ -669,7 +670,7 @@ function renderPhotoCard(photo, options = {}) {
 
         <!-- Hover overlay -->
         <div class="photo-card-hover-overlay" style="position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.6), transparent); display: flex; align-items: flex-end; justify-content: flex-end; padding: 12px; opacity: 0; transition: opacity 0.3s ease;">
-            <button onclick="event.stopPropagation(); ${onZoom}" style="padding: 8px; border-radius: 8px; background: rgba(255,255,255,0.9); backdrop-filter: blur(4px); border: none; cursor: pointer; display: flex; align-items: center; justify-content: center;">
+            <button onclick="event.stopPropagation(); ${onZoom}" aria-label="Zoom photo" style="padding: 8px; border-radius: 8px; background: rgba(255,255,255,0.9); backdrop-filter: blur(4px); border: none; cursor: pointer; display: flex; align-items: center; justify-content: center;">
                 <span style="display: block; width: 16px; height: 16px;">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
                 </span>
