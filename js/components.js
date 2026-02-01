@@ -190,9 +190,10 @@ function renderSelfieUploader(id) {
                     />
                     <button
                         onclick="resetSelfie('${id}')"
+                        aria-label="Close selfie preview"
                         style="position: absolute; top: 12px; right: 12px; padding: 8px; border-radius: 50%; background: rgba(255,255,255,0.9); border: none; box-shadow: var(--shadow-soft); cursor: pointer; color: var(--text-primary); display: flex; align-items: center; justify-content: center;"
                     >
-                        <span style="width: 20px; height: 20px;">${Icons.X}</span>
+                        <span style="width: 20px; height: 20px;" aria-hidden="true">${Icons.X}</span>
                     </button>
                 </div>
 
@@ -449,7 +450,7 @@ function renderUploadPreviews(zoneId) {
     previewContainer.innerHTML = files.map(file => `
         <div class="upload-preview-item" id="preview-${file.id}">
             <img src="${file.data}" alt="${escapeHtml(file.name)}">
-            <button class="upload-preview-remove" onclick="removeUploadedFile('${zoneId}', '${file.id}')">✕</button>
+            <button class="upload-preview-remove" onclick="removeUploadedFile('${zoneId}', '${file.id}')" aria-label="Remove photo">✕</button>
         </div>
     `).join('');
 }
@@ -606,10 +607,10 @@ function renderLightbox() {
     }
 
     lightbox.innerHTML = `
-        <button class="lightbox-close" onclick="closeLightbox()">✕</button>
+        <button class="lightbox-close" onclick="closeLightbox()" aria-label="Close lightbox">✕</button>
         ${lightboxState.photos.length > 1 ? `
-            <button class="lightbox-nav lightbox-prev" onclick="lightboxPrev()">‹</button>
-            <button class="lightbox-nav lightbox-next" onclick="lightboxNext()">›</button>
+            <button class="lightbox-nav lightbox-prev" onclick="lightboxPrev()" aria-label="Previous photo">‹</button>
+            <button class="lightbox-nav lightbox-next" onclick="lightboxNext()" aria-label="Next photo">›</button>
         ` : ''}
         <div class="lightbox-content">
             <img class="lightbox-image" src="${photo.data}" alt="Photo">
@@ -644,6 +645,9 @@ function renderPhotoCard(photo, options = {}) {
     return `
     <div class="group relative rounded-xl overflow-hidden cursor-pointer transition-all duration-300"
          onclick="${onSelect}"
+         role="button"
+         tabindex="0"
+         onkeydown="if(event.key==='Enter'||event.key===' ') { event.preventDefault(); this.click(); }"
          onmouseover="this.querySelector('.photo-card-hover-overlay').style.opacity='1'; this.querySelector('.photo-card-img').style.transform='scale(1.05)'; this.style.boxShadow='var(--shadow-medium)';"
          onmouseout="this.querySelector('.photo-card-hover-overlay').style.opacity='0'; this.querySelector('.photo-card-img').style.transform='scale(1.0)'; this.style.boxShadow='${isSelected ? 'var(--shadow-elevated)' : 'var(--shadow-soft)'}';"
          style="position: relative; border-radius: var(--radius-xl); overflow: hidden; cursor: pointer; transition: all 0.3s ease; box-shadow: ${isSelected ? 'var(--shadow-elevated)' : 'var(--shadow-soft)'}; ${isSelected ? 'box-shadow: 0 0 0 4px var(--primary);' : ''}">
@@ -669,8 +673,8 @@ function renderPhotoCard(photo, options = {}) {
 
         <!-- Hover overlay -->
         <div class="photo-card-hover-overlay" style="position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.6), transparent); display: flex; align-items: flex-end; justify-content: flex-end; padding: 12px; opacity: 0; transition: opacity 0.3s ease;">
-            <button onclick="event.stopPropagation(); ${onZoom}" style="padding: 8px; border-radius: 8px; background: rgba(255,255,255,0.9); backdrop-filter: blur(4px); border: none; cursor: pointer; display: flex; align-items: center; justify-content: center;">
-                <span style="display: block; width: 16px; height: 16px;">
+            <button onclick="event.stopPropagation(); ${onZoom}" aria-label="Zoom photo" style="padding: 8px; border-radius: 8px; background: rgba(255,255,255,0.9); backdrop-filter: blur(4px); border: none; cursor: pointer; display: flex; align-items: center; justify-content: center;">
+                <span style="display: block; width: 16px; height: 16px;" aria-hidden="true">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
                 </span>
             </button>
@@ -775,7 +779,7 @@ function renderEventCard(event, onClick) {
     const photoCount = event.photos?.length || 0;
 
     return `
-        <div class="event-card" onclick="${onClick}">
+        <div class="event-card" onclick="${onClick}" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' ') { event.preventDefault(); this.click(); }">
             <div class="event-card-image">
                 <img src="${event.coverImage}" alt="${escapeHtml(event.name)}">
             </div>
@@ -800,8 +804,8 @@ function renderEventCard(event, onClick) {
 // Render back button
 function renderBackButton(text, route) {
     return `
-        <button class="back-button" onclick="navigate('${route}')">
-            ← ${escapeHtml(text)}
+        <button class="back-button" onclick="navigate('${route}')" aria-label="Go back to ${escapeHtml(text)}">
+            <span aria-hidden="true">←</span> ${escapeHtml(text)}
         </button>
     `;
 }

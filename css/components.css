@@ -215,11 +215,17 @@
     transition: all var(--transition-base);
 }
 
-.card-hover:hover {
+.card-hover:hover,
+.card-hover:focus-visible {
     background: var(--glass-hover);
-    border-color: rgba(99, 102, 241, 0.3);
+    border-color: var(--accent-primary);
     transform: translateY(-4px);
     box-shadow: var(--shadow-lg);
+}
+
+.card-hover:focus-visible {
+    outline: 2px solid var(--accent-primary);
+    outline-offset: 4px;
 }
 
 .card-header {
@@ -668,9 +674,15 @@
     transition: all var(--transition-base);
 }
 
-.photo-card:hover {
+.photo-card:hover,
+.photo-card:focus-visible {
     transform: scale(1.02);
     box-shadow: var(--shadow-xl);
+}
+
+.photo-card:focus-visible {
+    outline: 2px solid var(--accent-primary);
+    outline-offset: 4px;
 }
 
 .photo-card img {
