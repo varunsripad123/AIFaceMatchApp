@@ -668,9 +668,15 @@
     transition: all var(--transition-base);
 }
 
-.photo-card:hover {
+.photo-card:hover,
+.photo-card:focus-visible {
     transform: scale(1.02);
     box-shadow: var(--shadow-xl);
+}
+
+.photo-card:focus-visible {
+    outline: 3px solid var(--accent-primary);
+    outline-offset: 4px;
 }
 
 .photo-card img {
