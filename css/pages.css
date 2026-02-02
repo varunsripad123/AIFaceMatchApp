@@ -265,10 +265,16 @@
     transition: all var(--transition-base);
 }
 
-.event-card:hover {
+.event-card:hover,
+.event-card:focus-visible {
     transform: translateY(-4px);
     border-color: var(--accent-primary);
     box-shadow: var(--shadow-lg), 0 0 30px rgba(99, 102, 241, 0.1);
+}
+
+.event-card:focus-visible {
+    outline: 3px solid var(--accent-primary);
+    outline-offset: 4px;
 }
 
 .event-card-image {
