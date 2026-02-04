@@ -195,7 +195,7 @@ function showToast(message, type = 'info', duration = 4000) {
         <div class="toast-content">
             <div class="toast-message">${escapeHtml(message)}</div>
         </div>
-        <span class="toast-close" onclick="this.parentElement.remove()">✕</span>
+        <button class="toast-close" onclick="this.parentElement.remove()" aria-label="Close notification">✕</button>
     `;
 
     container.appendChild(toast);
