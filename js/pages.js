@@ -185,12 +185,12 @@ function renderSignupPage() {
                         <div class="form-group">
                             <label class="form-label">I am a...</label>
                             <div class="role-selector">
-                                <div class="role-option selected" onclick="selectRole('attendee')" id="role-attendee">
+                                <div class="role-option selected" tabindex="0" onclick="selectRole('attendee')" onkeydown="if(['Enter',' '].includes(event.key)){this.click();event.preventDefault();}" id="role-attendee">
                                     <div class="role-option-icon">🎉</div>
                                     <div class="role-option-title">Event Attendee</div>
                                     <div class="role-option-desc">Find my photos</div>
                                 </div>
-                                <div class="role-option" onclick="selectRole('photographer')" id="role-photographer">
+                                <div class="role-option" tabindex="0" onclick="selectRole('photographer')" onkeydown="if(['Enter',' '].includes(event.key)){this.click();event.preventDefault();}" id="role-photographer">
                                     <div class="role-option-icon">📸</div>
                                     <div class="role-option-title">Photographer</div>
                                     <div class="role-option-desc">Upload event photos</div>

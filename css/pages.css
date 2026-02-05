@@ -202,9 +202,15 @@
     transition: all var(--transition-base);
 }
 
-.role-option:hover {
+.role-option:hover,
+.role-option:focus-visible {
     border-color: var(--accent-primary);
     background: rgba(99, 102, 241, 0.05);
+    outline: none;
+}
+
+.role-option:focus-visible {
+    box-shadow: 0 0 0 2px var(--accent-primary);
 }
 
 .role-option.selected {
@@ -265,10 +271,16 @@
     transition: all var(--transition-base);
 }
 
-.event-card:hover {
+.event-card:hover,
+.event-card:focus-visible {
     transform: translateY(-4px);
     border-color: var(--accent-primary);
     box-shadow: var(--shadow-lg), 0 0 30px rgba(99, 102, 241, 0.1);
+    outline: none;
+}
+
+.event-card:focus-visible {
+    box-shadow: var(--shadow-lg), 0 0 0 3px var(--accent-primary);
 }
 
 .event-card-image {
